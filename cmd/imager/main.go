@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"html"
 	ceph "imageServer/pkg/cephInterface"
 	migr "imageServer/pkg/imageMigrator"
 	size "imageServer/pkg/imageResizer"
@@ -10,12 +11,12 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"html"
 	"os"
 	"time"
 )
 
 const largestWidth = 100
+
 // T is a debugging tool shared by the server components
 var T trace.Trace
 
@@ -29,8 +30,7 @@ func main() {
 
 	T.Print("starting\n")
 	go startWebserver()
-	go runLoadTest()
-	time.Sleep(time.Second)
+	runLoadTest()
 }
 
 // startWebserver for all image requests
@@ -58,77 +58,71 @@ func startWebserver() {
 	}
 }
 
-
 // getSizedImage gets an image in a specific size
 func getSizedImage(w http.ResponseWriter, r *http.Request) {
 	defer T.Begin()()
 
 	fullPath := r.URL.Path
-	key, wid, hgt, qual, grey, name, imgType := parseImageURL(fullPath)
-	if ceph.WeHave(fullPath) {
+	key, width, height, quality, grey, name, imgType, err := parseImageURL(fullPath)
+	if err != nil {
+		http.Error(w, "Cannot interpret url", 400)
+	}
+	if ceph.HaveWe(fullPath) {
 		// return the file in the size requested
-		io.WriteString(w, ceph.Get(r.URL.Path)) // nolint FIXME
-	} else if ceph.WeHave(key) {
+		io.WriteString(w, ceph.Get(fullPath)) // nolint FIXME
+	} else if ceph.HaveWe(key) {
 		// we have a base file which we can resize
-		if wid < largestWidth {
+		if width < largestWidth {
 			// we can afford to do it in-line
-			s := size.ResizeImage(ceph.Get(key), wid, hgt, qual, grey, name,
-				imgType)
-			go ceph.Save(r.URL.Path, s)
-			io.WriteString(w, s) // nolint
+			s := size.ResizeImage(ceph.Get(key), width, height, quality,
+				grey, name, imgType)
+			// return it, and save in the background
+			io.WriteString(w, dummyImage(imgType)) // nolint
+			go ceph.Save(fullPath, s)
 		} else {
 			// we background it and return a dummy
-			go func() {
-				ceph.Save(fullPath, size.ResizeImage(ceph.Get(key), wid, hgt, qual, grey,
-					name, imgType))
-			}()
 			io.WriteString(w, dummyImage(imgType)) // nolint
+			go func() {
+				ceph.Save(fullPath, size.ResizeImage(ceph.Get(key), width,
+					height, quality, grey, name, imgType))
+			}()
 		}
 	} else {
 		// we lack a base, so background a migrate-then-resize, return a dummy
+		io.WriteString(w, dummyImage(imgType)) // nolint
 		go func() {
-			ceph.Save(fullPath, migr.MigrateAndResizeImage(ceph.Get(key), wid, hgt, qual,
+			ceph.Save(fullPath, migr.MigrateAndResizeImage(ceph.Get(key), width, height, quality,
 				grey, name, imgType))
 		}()
-		io.WriteString(w, dummyImage(imgType)) // nolint
+
 	}
 }
 
 // runLoadTest beats up the web server
 func runLoadTest() {
 	key := "/image/albert/100/200/85/False/albert.jpg"
+	//key := "/albert.jpg"
 	initial := time.Now()
-	resp, err := http.Get("http://localhost:8080" + key)
+	resp, err := http.Get("http://localhost:8080/" + key)
 	if err != nil {
 		panic(fmt.Sprintf("Got error: %v", err))
 	}
-	ioutil.ReadAll(resp.Body)  // nolint. was body, _ :=  ioutil.ReadAll(resp.Body)
-	resp.Body.Close() // nolint
-	//T.Printf("        Finished GET request #%v, %s\n", count, body)
+	ioutil.ReadAll(resp.Body) // nolint. was body, err :=  ioutil.ReadAll(resp.Body)
+	resp.Body.Close()         // nolint
 	requestTime := time.Since(initial)
 	reportPerformance(initial, requestTime, 0, 0, 0, 200, key)
-
 
 }
 
 // reportPerformance in standard format
 func reportPerformance(initial time.Time, latency, xferTime,
-thinkTime time.Duration, length int64, rc int, key string) {
+	thinkTime time.Duration, length int64, rc int, key string) {
 
 	fmt.Printf("%s %f %f %f %d %s %d GET\n",
 		initial.Format("2006-01-02 15:04:05.000"),
 		latency.Seconds(), xferTime.Seconds(), thinkTime.Seconds(),
 		length, key, rc)
 }
-
-
-
-// handle the imager-specific parsing problem
-func parseImageURL(s string) (key string, width, height, quality uint, grayScale bool, name, imgType string) {
-	defer T.Begin()()
-	return "image/albert", 0, 0, 0, false, "albert", "jpg"
-}
-
 
 // return a dummy image in the appropriate type and a selected size
 func dummyImage(imageType string) string {

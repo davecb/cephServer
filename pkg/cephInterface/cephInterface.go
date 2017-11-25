@@ -16,9 +16,9 @@ func Get(key string) string {
 	return ""
 }
 
-// WeHave sees if we have a file by its key
+// HaveWe sees if we have a file by its key
 // it may be follwed by a Get if it returns true
-func WeHave(key string) bool {
+func HaveWe(key string) bool {
 	defer T.Begin(key)()
 
 	switch {
