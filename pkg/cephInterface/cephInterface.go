@@ -17,7 +17,7 @@ func Get(key string) string {
 }
 
 // HaveWe sees if we have a file by its key
-// it may be follwed by a Get if it returns true
+// it may be followed by a Get if it returns true
 func HaveWe(key string) bool {
 	defer T.Begin(key)()
 
@@ -32,8 +32,8 @@ func HaveWe(key string) bool {
 }
 
 // Save stores a file in ceph via the s3-compatible interface
-func Save(key, contents string) {
-	defer T.Begin(key)()
+func Save(contents, key string) {
+	defer T.Begin("<contents>", key)()
 
 	strings := strings.Split(key, "/")
 	out, err := os.Create(strings[len(strings)-1])

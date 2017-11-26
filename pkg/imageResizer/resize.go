@@ -35,8 +35,8 @@ func init() {
 
 // ResizeImage strictly resizes an image.
 // FIXME we pass in contents which we don't use
-func ResizeImage(contents string, width, height, quality uint, grayScale bool, name, imgType string) string {
-	defer T.Begin("<contents>", width, height, quality, grayScale, name, imgType)()
+func ResizeImage(contents, key string, width, height, quality uint, grayScale bool, name, imgType string) string {
+	defer T.Begin("<contents>", key, width, height, quality, grayScale, name, imgType)()
 
 	buf := new(bytes.Buffer)
 
@@ -63,7 +63,7 @@ func ResizeImage(contents string, width, height, quality uint, grayScale bool, n
 		log.Fatal("not a jpg") // FIXME
 	}
 	resizeTime := time.Since(initial)
-	reportPerformance(initial, resizeTime, 0,0, 0, 200, "-")
+	reportPerformance(initial, resizeTime, 0,0, 0, 200, key)
 	return buf.String()
 }
 
