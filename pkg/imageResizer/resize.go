@@ -63,13 +63,13 @@ func ResizeImage(contents, key string, width, height, quality uint, grayScale bo
 		log.Fatal("not a jpg") // FIXME
 	}
 	resizeTime := time.Since(initial)
-	reportPerformance(initial, resizeTime, 0,0, 0, 200, key)
+	reportPerformance(initial, resizeTime, 0,0, buf.Len(), 200, key)
 	return buf.String()
 }
 
 // reportPerformance in standard format
 func reportPerformance(initial time.Time, latency, xferTime,
-		thinkTime time.Duration, length int64, rc int, key string) {
+		thinkTime time.Duration, length int, rc int, key string) {
 
 	fmt.Printf("%s %f %f %f %d %s %d RESIZE\n",
 	initial.Format("2006-01-02 15:04:05.000"),

@@ -39,7 +39,10 @@ func main() {
 func startWebserver() {
 	defer T.Begin()()
 
+	// fixme, should be image
 	http.HandleFunc("/content/v1/images.s3.kobo.com/", func(w http.ResponseWriter, r *http.Request) {
+		defer T.Begin(r)()
+
 		r.URL.Path = strings.TrimPrefix(r.URL.Path, "/content/v1/images.s3.kobo.com/")
 		switch r.Method {
 		case "GET":
@@ -55,7 +58,9 @@ func startWebserver() {
 			http.Error(w, "Method not allowed", 405)
 		}
 	})
-	err := http.ListenAndServe(":8080", nil) // nolint
+	// handler for a shorter prefix,content, etc, etc
+
+	err := http.ListenAndServe(":8081", nil) // nolint
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
@@ -107,20 +112,23 @@ func runLoadTest() {
 	key := "/content/v1/images.s3.kobo.com/image/albert/100/200/85/False/albert.jpg"
 	//key := "/albert.jpg"
 	initial := time.Now()
-	resp, err := http.Get("http://localhost:8080/" + key)
+	resp, err := http.Get("http://localhost:8081/" + key)
 	if err != nil {
-		panic(fmt.Sprintf("Got error: %v", err))
+		panic(fmt.Sprintf("Got an error in the get: %v", err))
 	}
-	ioutil.ReadAll(resp.Body) // nolint. was body, err :=  ioutil.ReadAll(resp.Body)
+	body, err :=  ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(fmt.Sprintf("Got an error in the body read: %v", err))
+	}
 	resp.Body.Close()         // nolint
 	requestTime := time.Since(initial)
-	reportPerformance(initial, requestTime, 0, 0, 0, 200, key)
+	reportPerformance(initial, requestTime, 0, 0, len(body), 200, key)
 
 }
 
 // reportPerformance in standard format
 func reportPerformance(initial time.Time, latency, xferTime,
-	thinkTime time.Duration, length int64, rc int, key string) {
+	thinkTime time.Duration, length int, rc int, key string) {
 
 	fmt.Printf("%s %f %f %f %d %s %d GET\n",
 		initial.Format("2006-01-02 15:04:05.000"),
@@ -131,5 +139,5 @@ func reportPerformance(initial time.Time, latency, xferTime,
 // return a dummy image in the appropriate type and a selected size
 func dummyImage(imageType string) string {
 	defer T.Begin()()
-	return ""
+	return "dummy image"
 }
