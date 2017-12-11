@@ -6,9 +6,7 @@ package cephInterface
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
-	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -17,12 +15,12 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"os"
 )
 
 // S3Proto satisfies operation by doing rest operations.
 type S3Proto struct {
 	Prefix   string
-	S3Bucket string
 	S3Key    string
 	S3Secret string
 	Verbose  bool
@@ -31,56 +29,43 @@ type S3Proto struct {
 var svc *s3.S3
 var awsLogLevel = aws.LogOff
 
+
 // Get does a get operation from an s3Protocol target and times it,
-func (p S3Proto) Get(path string, oldRc string) error {
-	defer T.Begin(p.Prefix, path)()
+func (p S3Proto) Get(key, bucket string) (string, error) {
+	defer T.Begin(p.Prefix, key, bucket)()
 
-	file, err := ioutil.TempFile("/tmp", "loadTesting")
-	if err != nil {
-		log.Fatalf("Unable to create a temp file,  %v", err)
-	}
-	defer os.Remove(file.Name()) // nolint
-
-	downloader := s3manager.NewDownloaderWithClient(svc)
 	initial := time.Now() //              				***** Response time starts
-	numBytes, err := downloader.Download(file,
-		// file is an op.Writer At, see aws.WriteAtBuffer, whcih is a []byte
-		// https://gist.github.com/jboelter/ecfb08d6a18440ac16d93b5183aad207
-		//buff := &aws.WriteAtBuffer{}
-		//s3dl := s3manager.NewDownloader(awsSession)
-		//n, err := s3dl.Download(buff, &s3.GetObjectInput{
-		//	Bucket: aws.String(bucket),
-		//	Key:    aws.String(key),
-		//})
-	    // 	if err != nil {
-		//	fmt.Fprintln(os.Stderr, err)
-		//	os.Exit(1)
-		//}
-		//n2, err := io.Copy(os.Stdout, bytes.NewReader(buff.Bytes()))
-		&s3.GetObjectInput{
-			Bucket: aws.String(p.S3Bucket),
-			Key:    aws.String(path),
-		})
+	// https://gist.github.com/jboelter/ecfb08d6a18440ac16d93b5183aad207
+	//buff := &aws.WriteAtBuffer{}
+	downloader := s3manager.NewDownloaderWithClient(svc)
+	numBytes, err := downloader.Download(os.Stderr, &s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed in downloader.Download, %v\n", err)
+	}
+	//n2, err := io.Copy(os.Stdout, bytes.NewReader(buff.Bytes()))
 	responseTime := time.Since(initial) // 				***** Response time ends
 	if err != nil {
 		rc := errorCodeToHTTPCode(err)
 		fmt.Printf("%s %f 0 0 %d %s %d GET\n",
 			initial.Format("2006-01-02 15:04:05.000"),
-			responseTime.Seconds(), numBytes, path, rc)
+			responseTime.Seconds(), numBytes, key, rc)
 
 		// Extract and reportPerformance the failure, iff possible
-		return nil
+		return "", nil
 	}
 	fmt.Printf("%s %f 0 0 %d %s 200 GET\n",
 		initial.Format("2006-01-02 15:04:05.000"),
-		responseTime.Seconds(), numBytes, path)
-	return nil
+		responseTime.Seconds(), numBytes, key)
+	return "", nil
 }
 
 // Put puts a file and times it
 // error return is used only by mkLoadTestFiles  FIXME
-func (p S3Proto) Put(path, size, oldRC string) error {
-	defer T.Begin(path, size)
+func (p S3Proto) Put(contents, path, bucket string) error {
+	defer T.Begin("<contents>", path, bucket)()
 	return fmt.Errorf("put is not implemented yet")
 	//if conf.Debug {
 	//	log.Printf("in AmazonS3Put(%s, %s, %d)\n", p.prefix, path, size)
@@ -129,7 +114,7 @@ func (p S3Proto) Put(path, size, oldRC string) error {
 }
 
 // mustCreateService creates a connection to an s3-compatible server.
-func  (p S3Proto) mustCreateService(myEndpoint string, awsLogLevel aws.LogLevelType) *s3.S3 {
+func (p S3Proto) mustCreateService(myEndpoint string, awsLogLevel aws.LogLevelType) *s3.S3 {
 	defer T.Begin(myEndpoint, awsLogLevel)()
 
 	if p.S3Key == "" {

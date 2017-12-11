@@ -1,6 +1,6 @@
 package imageMigrator
 
-import "imageServer/pkg/trace"
+import "github.com/davecb/cephServer/pkg/trace"
 
 // T is a debugging tool shared by the server components
 var T trace.Trace  // a debugging tool

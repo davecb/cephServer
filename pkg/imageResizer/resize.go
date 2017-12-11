@@ -1,15 +1,14 @@
 package imageResizer
 
 import (
-	"imageServer/pkg/trace"
+	"github.com/davecb/cephServer/pkg/trace"
 
-	"github.com/nfnt/resize"
+	//"github.com/nfnt/resize"
 	"image"
-	"os"
-	"image/jpeg"
-	"log"
-	"bytes"
-	"image/png"
+	//"image/jpeg"
+	//"log"
+	//"bytes"
+	//"image/png"
 	"time"
 	"fmt"
 )
@@ -18,53 +17,39 @@ import (
 var T trace.Trace 
 var sample  image.Image
 
-// init sets up the test with a single image
-func init() {
-	file, err := os.Open("01.jpg")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close() // nolint
-	// decode jpeg into image.Image
-	img, err := jpeg.Decode(file)
-	if err != nil {
-		log.Fatal(err)
-	}
-	sample = img
-}
-
 // Image strictly resizes an image.
-// FIXME we pass in contents which we don't use
 func Image(contents, key string, width, height, quality uint, grayScale bool, name, imgType string) string {
 	defer T.Begin("<contents>", key, width, height, quality, grayScale, name, imgType)()
 
-	buf := new(bytes.Buffer)
+	return ""
 
-	initial := time.Now()
-	m := resize.Resize(width, height, sample, resize.NearestNeighbor)
-	switch {
-	case imgType == "jpg":
-		opt := jpeg.Options{Quality: int(quality)}
-		err := jpeg.Encode(buf, m, &opt)
-		if err != nil {
-			log.Fatalf("jpg write failure %v\n", err)
-		}
-	case imgType == "png":
-		err := png.Encode(buf, m)
-		if err != nil {
-			log.Fatalf("png write failure %v\n", err)
-		}
-		//ico
-		// jpg
-		// pdf
-		// png
-
-	default:
-		log.Fatal("not a jpg") // FIXME
-	}
-	resizeTime := time.Since(initial)
-	reportPerformance(initial, resizeTime, 0,0, buf.Len(), 200, key)
-	return buf.String()
+	//buf := new(bytes.Buffer)
+	//
+	//initial := time.Now()
+	//m := resize.Resize(width, height, contents, resize.NearestNeighbor)   // FIXME
+	//switch {
+	//case imgType == "jpg":
+	//	opt := jpeg.Options{Quality: int(quality)}
+	//	err := jpeg.Encode(buf, m, &opt)
+	//	if err != nil {
+	//		log.Fatalf("jpg write failure %v\n", err)
+	//	}
+	//case imgType == "png":
+	//	err := png.Encode(buf, m)
+	//	if err != nil {
+	//		log.Fatalf("png write failure %v\n", err)
+	//	}
+	//	//ico
+	//	// jpg
+	//	// pdf
+	//	// png
+	//
+	//default:
+	//	log.Fatal("not a jpg") // FIXME
+	//}
+	//resizeTime := time.Since(initial)
+	//reportPerformance(initial, resizeTime, 0,0, buf.Len(), 200, key)
+	//return buf.String()
 }
 
 // reportPerformance in standard format
