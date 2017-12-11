@@ -10,25 +10,20 @@ import (
 // T is a debugging tool shared by the server components
 var T trace.Trace
 
-// Get obtains a file from ceph via the s3-compatible interface
-func Get(key string) string {
-	defer T.Begin(key)()
-	return ""
+// P is the s3 protocol parameter set
+var P = S3Proto{
+	Prefix:   "nowhere",
+	S3Bucket: "moose",
+	Verbose:  true,
+	S3Key:    "key",
+	S3Secret: "secret",
 }
 
-// HaveWe sees if we have a file by its key
-// it may be followed by a Get if it returns true
-func HaveWe(key string) bool {
-	defer T.Begin(key)()
 
-	switch {
-	case key == "image/albert/100/200/85/False/albert.jpg":
-		return false
-	case key == "image/albert":
-		return true
-	default:
-		return false
-	}
+// Get obtains a file from ceph via the s3-compatible interface
+func Get(key string) (string, error) {
+	defer T.Begin(key)()
+	return "", nil
 }
 
 // Save stores a file in ceph via the s3-compatible interface
@@ -48,5 +43,5 @@ func Save(contents, key string) {
 	if err != nil {
 		log.Fatalf("write failure %v\n", err)
 	}
-	
+
 }

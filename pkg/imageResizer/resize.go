@@ -33,9 +33,9 @@ func init() {
 	sample = img
 }
 
-// ResizeImage strictly resizes an image.
+// Image strictly resizes an image.
 // FIXME we pass in contents which we don't use
-func ResizeImage(contents, key string, width, height, quality uint, grayScale bool, name, imgType string) string {
+func Image(contents, key string, width, height, quality uint, grayScale bool, name, imgType string) string {
 	defer T.Begin("<contents>", key, width, height, quality, grayScale, name, imgType)()
 
 	buf := new(bytes.Buffer)

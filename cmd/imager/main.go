@@ -13,7 +13,7 @@ import (
 
 	ceph "imageServer/pkg/cephInterface"
 	migr "imageServer/pkg/imageMigrator"
-	size "imageServer/pkg/imageResizer"
+	resize "imageServer/pkg/imageResizer"
 	"imageServer/pkg/trace"
 )
 
@@ -28,7 +28,7 @@ func main() {
 	defer T.Begin()()
 	ceph.T = T
 	migr.T = T
-	size.T = T
+	resize.T = T
 
 	go runLoadTest()
 	startWebserver()
@@ -66,44 +66,50 @@ func startWebserver() {
 	}
 }
 
-// getSizedImage gets an image in a specific size
+// getSizedImage gets an image in a specific resize
 func getSizedImage(w http.ResponseWriter, r *http.Request) {
 	defer T.Begin(r.URL.Path)()
 
 	fullPath := r.URL.Path
 	key, width, height, quality, grey, name, imgType, err := parseImageURL(fullPath)
 	if err != nil {
-		http.Error(w, "Cannot interpret url", 400)
+		http.Error(w, "Cannot interpret url " + fullPath , 400)
 	}
-	if ceph.HaveWe(fullPath) {
-		// return the file in the size requested
-		io.WriteString(w, ceph.Get(fullPath)) // nolint
-	} else if ceph.HaveWe(key) {
+
+	bytes, err := ceph.Get(fullPath)
+	if err == nil {
+		// return the file in the resize requested
+		io.WriteString(w, bytes) // nolint
+		return
+	}
+
+	bytes, err = ceph.Get(key)
+	if err == nil {
 		// we have a base file which we can resize
 		if width < largestWidth {
 			// we can afford to do it in-line
-			s := size.ResizeImage(ceph.Get(key), key, width, height,
+			s := resize.Image(bytes, key, width, height,
 				quality, grey, name, imgType)
 			// return it, and save in the background
 			io.WriteString(w, dummyImage(imgType)) // nolint
 			go ceph.Save(s, fullPath)
 		} else {
-			// we background it and return a dummy
+			// we background it and return a dummy FIXME or the original
 			io.WriteString(w, dummyImage(imgType)) // nolint
 			go func() {
-				ceph.Save(size.ResizeImage(ceph.Get(key), key,
+				ceph.Save(resize.Image(bytes, key,
 					width, height, quality, grey, name, imgType), fullPath)
 			}()
 		}
-	} else {
-		// we lack a base, so background a migrate-then-resize, return a dummy
-		io.WriteString(w, dummyImage(imgType)) // nolint
-		go func() {
-			ceph.Save(migr.MigrateAndResizeImage(ceph.Get(key),
-				key, width, height, quality, grey, name, imgType),fullPath)
-		}()
-
+		return
 	}
+
+	// we lack a base, so background a migrate-then-resize, return a dummy
+	io.WriteString(w, dummyImage(imgType)) // nolint
+	go func() {
+		ceph.Save(migr.MigrateAndResizeImage(bytes,
+			key, width, height, quality, grey, name, imgType),fullPath)
+	}()
 }
 
 // runLoadTest beats on the web server
@@ -136,7 +142,7 @@ func reportPerformance(initial time.Time, latency, xferTime,
 		length, key, rc)
 }
 
-// return a dummy image in the appropriate type and a selected size
+// return a dummy image in the appropriate type and a selected resize
 func dummyImage(imageType string) string {
 	defer T.Begin()()
 	return "dummy image"

@@ -18,34 +18,16 @@ func parseImageURL(s string) (key string, width, height, quality uint,
 	if at <= 0 {
 		// FIXME this may be acceptable at a later time
 		return "", 0, 0, 0, false, "", "",
-			fmt.Errorf("could not find any / characters in $q, rejected", s)
+			fmt.Errorf("could not find any / characters in %q, rejected", s)
 	}
 
 	// Proceed from right to left, although this is LL(1)
 	T.Printf("name.type token[%d] = %q\n", at, tokens[at])
-	nameAndType := strings.Split(tokens[at], ".")
-	switch nameAndType[1] {
-	case "jpg", "jpeg", "JPG", "JPEG", "png", "PNG":
-		imgType = nameAndType[1]
-	default:
-		imgType = "" // no type
-	}
-	name = nameAndType[0]
-	at = decrement(at)
+	at, name, imgType = parseNameComponent(tokens, at)
 
 	// We are now before the name, expecting a boolean, a number or a text key
 	T.Printf("quality token[%d] = %q\n", at, tokens[at])
-	switch tokens[at] {
-	case "true", "True":
-		grayScale = true
-		at = decrement(at)
-	case "false", "False", "":
-		grayScale = false
-		at = decrement(at)
-	default:
-		// if we get here, we lack a grayScale value
-		grayScale = false
-	}
+	at, grayScale = parseGrayscale(tokens, at)
 
 	// we are now past (sorta) grayScale, expecting a quality,
 	// a height, a width or a text key , in that order
@@ -89,7 +71,7 @@ func parseImageURL(s string) (key string, width, height, quality uint,
 	T.Printf("key token[%d] = %q\n", at, tokens[at])
 	for i := 0; i <= at; i++ {
 		if key == "" {
-			  key = tokens[i]
+			key = tokens[i]
 		} else {
 			key = key + "/" + tokens[i]
 		}
@@ -97,6 +79,40 @@ func parseImageURL(s string) (key string, width, height, quality uint,
 	T.Printf("key = %q\n", key)
 	return key, width, height, quality, grayScale, name, imgType, nil
 }
+
+
+// parseNameComponent parses strings like name.gif
+func parseNameComponent(tokens []string, at int) (int, string, string) {
+	var imgType string
+	
+	nameAndType := strings.Split(tokens[at], ".")
+	switch nameAndType[1] {
+	case "jpg", "jpeg", "JPG", "JPEG", "png", "PNG":  // Webp? likely
+		imgType = nameAndType[1]
+	default:
+		imgType = "" // no type
+	}
+	return decrement(at), nameAndType[0], imgType
+}
+
+// parseGrayscale sees if this token is a grayscale true or false
+func parseGrayscale(tokens []string, at int) (int, bool) {
+	var  grayScale bool
+
+	switch tokens[at] {
+	case "true", "True":
+		grayScale = true
+		at = decrement(at)
+	case "false", "False", "":
+		grayScale = false
+		at = decrement(at)
+	default:
+		// if we get here, we lack a grayScale value
+		grayScale = false
+	}
+	return at, grayScale
+}
+
 
 // decrement a counter toward zero, but no lower
 func decrement(i int) int {
