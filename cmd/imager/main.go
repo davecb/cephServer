@@ -11,9 +11,8 @@ import (
 	"strings"
 
 	ceph "github.com/davecb/cephServer/pkg/cephInterface"
-	migr "github.com/davecb/cephServer/pkg/imageMigrator"
-	resize "github.com/davecb/cephServer/pkg/imageResizer"
-	bucket "github.com/davecb/cephServer/pkg/bucketServers"
+	img "github.com/davecb/cephServer/pkg/imageServer"
+	bucket "github.com/davecb/cephServer/pkg/bucketServer"
 	"github.com/davecb/cephServer/pkg/trace"
 	"net/http/httputil"
 )
@@ -26,8 +25,7 @@ func main() {
 	T = trace.New(os.Stderr, true)
 	defer T.Begin()()
 	ceph.T = T
-	migr.T = T
-	resize.T = T
+	img.T = T
 	bucket.T = T
 
 	go runLoadTest()
@@ -82,7 +80,7 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 	r.URL.Path = strings.TrimPrefix(r.URL.Path, "/content/v1/images.s3.kobo.com/")
 	switch r.Method {
 	case "GET":
-		bucket.GetSizedImage(w, r)
+		img.GetSizedImage(w, r)
 	case "PUT":
 		fmt.Fprintf(w, "PUT not implemented, %q", html.EscapeString(r.URL.Path))
 	case "DELETE":
@@ -96,8 +94,8 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 // runLoadTest beats on the web server
 func runLoadTest() {
 	time.Sleep(time.Second * 2)
-	key := "/content/v1/download.s3.kobo.com/image/albert/100/200/85/False/albert.jpg"
-	//key := "/albert.jpg"
+	//key := "/content/v1/download.s3.kobo.com/image/albert/100/200/85/False/albert.jpg"
+	key := "/albert.jpg"
 	initial := time.Now()
 	resp, err := http.Get("http://localhost:8081/" + key)
 	if err != nil {
@@ -110,7 +108,7 @@ func runLoadTest() {
 	}
 	T.Printf("\n%s\n%s\n", responseToString(resp), bodyToString(body))
 	resp.Body.Close()         // nolint
-	reportPerformance(initial, requestTime, 0, 0, len(body), 200, key)
+	reportPerformance(initial, requestTime, 0, 0, len(body), resp.StatusCode, key)
 
 }
 

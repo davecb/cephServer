@@ -1,4 +1,6 @@
 package cephInterface
+// package cephInterface accesses ceph, currently via authenticated
+// s3-protocol calls
 
 import (
 	"github.com/davecb/cephServer/pkg/trace"

@@ -1,4 +1,4 @@
-package bucketServers
+package bucketServer
 
 
 import (
@@ -6,7 +6,10 @@ import (
 
 	"net/http"
 	"fmt"
+	"github.com/davecb/cephServer/pkg/trace"
 )
+
+var T trace.Trace
 
 // Get gets an object from a specific bucket
 func Get(w http.ResponseWriter, r *http.Request) error {

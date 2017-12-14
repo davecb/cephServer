@@ -1,7 +1,6 @@
-package imageResizer
+package imageServer
 
 import (
-	"github.com/davecb/cephServer/pkg/trace"
 
 	//"github.com/nfnt/resize"
 	"image"
@@ -14,11 +13,10 @@ import (
 )
 
 // T is a debugging tool shared by the server components
-var T trace.Trace 
 var sample  image.Image
 
 // Image strictly resizes an image.
-func Image(contents, key string, width, height, quality uint, grayScale bool, name, imgType string) string {
+func resizeImage(contents, key string, width, height, quality uint, grayScale bool, name, imgType string) string {
 	defer T.Begin("<contents>", key, width, height, quality, grayScale, name, imgType)()
 
 	return ""
