@@ -1,6 +1,12 @@
 package main
 
 import (
+
+	//"github.com/davecb/cephServer/pkg/imageServer"
+	"github.com/davecb/cephServer/pkg/bucketServer"
+	"github.com/davecb/cephServer/pkg/trace"
+	
+	"net/http/httputil"
 	"fmt"
 	"html"
 	"io/ioutil"
@@ -9,24 +15,18 @@ import (
 	"os"
 	"time"
 	"strings"
-
-	ceph "github.com/davecb/cephServer/pkg/cephInterface"
-	img "github.com/davecb/cephServer/pkg/imageServer"
-	bucket "github.com/davecb/cephServer/pkg/bucketServer"
-	"github.com/davecb/cephServer/pkg/trace"
-	"net/http/httputil"
+	"github.com/davecb/cephServer/pkg/imageServer"
 )
 
 
-// T is a debugging tool shared by the server components
-var T trace.Trace
+// t is a debugging tool shared by the server components
+var t = trace.New(os.Stderr, true) // or (nil, false)
+var img = imageServer.New(t) 
+var bucket = bucketServer.New(t)
 
 func main() {
-	T = trace.New(os.Stderr, true)
-	defer T.Begin()()
-	ceph.T = T
-	img.T = T
-	bucket.T = T
+	//t = trace.New(os.Stderr, true) // or (nil, false)
+	defer t.Begin()()
 
 	go runLoadTest()
 	startWebserver()
@@ -34,7 +34,7 @@ func main() {
 
 // startWebserver for all image requests
 func startWebserver() {
-	defer T.Begin()()
+	defer t.Begin()()
 
 	// handle image vs content part of prefixes
 	http.HandleFunc("/images/v1/images.s3.kobo.com/", imageHandler)       // FIXME Andrew's notation
@@ -49,53 +49,63 @@ func startWebserver() {
 
 // unsupportedHandler handles bad paths
 func unsupportedHandler(w http.ResponseWriter, r *http.Request) {
-	defer T.Begin(r)()
+	defer t.Begin(r)()
 
-	http.Error(w, r.Method + " " + html.EscapeString(r.URL.Path) + " not found", 404)
+	reportUnimplemented(w, "No handler for %q",	r.Method + " " + html.EscapeString(r.URL.Path))
 }
 
 // objectHandler handles "ordinary" objects
 func objectHandler(w http.ResponseWriter, r *http.Request) {
-	defer T.Begin(r)()
+	defer t.Begin(r)()
 
-	r.URL.Path = strings.TrimPrefix(r.URL.Path, "/content/v1/images.s3.kobo.com/")
+	r.URL.Path = strings.TrimPrefix(r.URL.Path,
+		"/content/v1/images.s3.kobo.com/")
 	switch r.Method {
 	case "GET":
-		bucket.Get(w, r)
+		bucket.Get(w, r) // FIXME, unchjecked return
 	case "PUT":
-		fmt.Fprintf(w, "PUT not implemented, %q", html.EscapeString(r.URL.Path))
+		// FIXME, add GET, maybe HEAD and DELETE
+		reportUnimplemented(w, "PUT not implemented, %q",
+			html.EscapeString(r.URL.Path))
 	case "DELETE":
-		fmt.Fprintf(w, "DELE not implemented, %q", html.EscapeString(r.URL.Path))
+		reportUnimplemented(w, "DELE not implemented, %q",
+			html.EscapeString(r.URL.Path))
 	default:
-		http.Error(w, fmt.Sprintf("Method %q not implememted for %q",
-			r.Method, html.EscapeString(r.URL.Path)), 405)
+		reportUnimplemented(w, "Method not implememted for %q",
+			r.Method + " " + html.EscapeString(r.URL.Path))
 	}
 }
 
 
 // imageHandler handles automagically-resized images
 func imageHandler(w http.ResponseWriter, r *http.Request) {
-	defer T.Begin(r)()
+	defer t.Begin(r)()
 
-	r.URL.Path = strings.TrimPrefix(r.URL.Path, "/content/v1/images.s3.kobo.com/")
+	r.URL.Path = strings.TrimPrefix(r.URL.Path,
+		"/content/v1/images.s3.kobo.com/")
 	switch r.Method {
 	case "GET":
-		img.GetSizedImage(w, r)
+		img.GetSized(w, r)
 	case "PUT":
-		fmt.Fprintf(w, "PUT not implemented, %q", html.EscapeString(r.URL.Path))
+		reportUnimplemented(w, "PUT not implemented, %q", html.EscapeString(r.URL.Path))
 	case "DELETE":
-		fmt.Fprintf(w, "DELE not implemented, %q", html.EscapeString(r.URL.Path))
+		reportUnimplemented(w, "DELE not implemented, %q", html.EscapeString(r.URL.Path))
 	default:
-		fmt.Fprintf(w, fmt.Sprintf("Method %q not implememted for %q",
-			r.Method, html.EscapeString(r.URL.Path)), 405)
+		reportUnimplemented(w, "Method not implememted for %q",	r.Method + " " + html.EscapeString(r.URL.Path))
 	}
+}
+
+func reportUnimplemented(w http.ResponseWriter, p, q string) {
+	t.Printf(p, q)
+	http.Error(w, fmt.Sprintf(p, q),405)
 }
 
 // runLoadTest beats on the web server
 func runLoadTest() {
 	time.Sleep(time.Second * 2)
+	key := "/content/v1/download.s3.kobo.com/3HK/index.html"
 	//key := "/content/v1/download.s3.kobo.com/image/albert/100/200/85/False/albert.jpg"
-	key := "/albert.jpg"
+	//key := "/albert.jpg"
 	initial := time.Now()
 	resp, err := http.Get("http://localhost:8081/" + key)
 	if err != nil {
@@ -106,7 +116,7 @@ func runLoadTest() {
 	if err != nil {
 		panic(fmt.Sprintf("Got an error in the body read: %v", err))
 	}
-	T.Printf("\n%s\n%s\n", responseToString(resp), bodyToString(body))
+	t.Printf("\n%s\n%s\n", responseToString(resp), bodyToString(body))
 	resp.Body.Close()         // nolint
 	reportPerformance(initial, requestTime, 0, 0, len(body), resp.StatusCode, key)
 

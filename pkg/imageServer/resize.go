@@ -1,25 +1,16 @@
 package imageServer
 
 import (
-
 	//"github.com/nfnt/resize"
-	"image"
-	//"image/jpeg"
-	//"log"
-	//"bytes"
-	//"image/png"
-	"time"
-	"fmt"
 )
 
-// T is a debugging tool shared by the server components
-var sample  image.Image
 
 // Image strictly resizes an image.
-func resizeImage(contents, key string, width, height, quality uint, grayScale bool, name, imgType string) string {
-	defer T.Begin("<contents>", key, width, height, quality, grayScale, name, imgType)()
+func (image Imager) resize(contents []byte, key string, width, height, quality uint, grayScale bool, name, imgType string) string {
+	defer image.Begin("<contents>", key, width, height, quality, grayScale, name, imgType)()
 
 	return ""
+	// FIXME wrap this in a check, log on error
 
 	//buf := new(bytes.Buffer)
 	//
@@ -51,12 +42,12 @@ func resizeImage(contents, key string, width, height, quality uint, grayScale bo
 }
 
 // reportPerformance in standard format
-func reportPerformance(initial time.Time, latency, xferTime,
-		thinkTime time.Duration, length int, rc int, key string) {
-
-	fmt.Printf("%s %f %f %f %d %s %d RESIZE\n",
-	initial.Format("2006-01-02 15:04:05.000"),
-	latency.Seconds(), xferTime.Seconds(), thinkTime.Seconds(),
-	length, key, rc)
-}
+//func reportPerformance(initial time.Time, latency, xferTime,
+//		thinkTime time.Duration, length int, rc int, key string) {
+//
+//	fmt.Printf("%s %f %f %f %d %s %d RESIZE\n",
+//	initial.Format("2006-01-02 15:04:05.000"),
+//	latency.Seconds(), xferTime.Seconds(), thinkTime.Seconds(),
+//	length, key, rc)
+//}
 
