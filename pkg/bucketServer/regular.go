@@ -3,7 +3,6 @@ package bucketServer
 
 import (
 	"net/http"
-	"fmt"
 	"github.com/davecb/cephServer/pkg/trace"
 
 	"strings"
@@ -13,7 +12,7 @@ import (
 
 var ceph *cephInterface.S3Proto   // maybe move
 
-// Bucket is a rstorage bucket
+// Bucket is a storage bucket
 type Bucket struct {
 	trace.Trace
 }
@@ -29,7 +28,6 @@ func (b Bucket) Get(w http.ResponseWriter, r *http.Request)  {  // nolint
 	var head *s3.HeadObjectOutput
 	defer b.Begin(r.URL.Path)()
 
-	fmt.Fprintf(w, "got a request for %s\n", r.URL.Path)
 	b.Printf("got a request for %s\n", r.URL.Path)
 
 	// split path into bucket and url
