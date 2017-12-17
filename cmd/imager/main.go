@@ -2,7 +2,7 @@ package main
 
 import (
 
-	//"github.com/davecb/cephServer/pkg/imageServer"
+	"github.com/davecb/cephServer/pkg/imageServer"
 	"github.com/davecb/cephServer/pkg/bucketServer"
 	"github.com/davecb/cephServer/pkg/trace"
 	
@@ -12,10 +12,10 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
+	//"os"
 	"time"
 	"strings"
-	"github.com/davecb/cephServer/pkg/imageServer"
+	"os"
 )
 
 
@@ -24,8 +24,16 @@ var t = trace.New(os.Stderr, true) // or (nil, false)
 var img = imageServer.New(t) 
 var bucket = bucketServer.New(t)
 
+const (   // FIXME Andrew's buckets
+	// buckets must have leading and trailing slashes
+	assets = "/assets.s3.kobo.com/"
+	download = "/download.s3.kobo.com/"
+	merch = "/merch.s3.kobo.com/"
+	ops = "/ops.s3.kobo.com/"
+)
+
+
 func main() {
-	//t = trace.New(os.Stderr, true) // or (nil, false)
 	defer t.Begin()()
 
 	go runLoadTest()
@@ -37,11 +45,23 @@ func startWebserver() {
 	defer t.Begin()()
 
 	// handle image vs content part of prefixes
-	http.HandleFunc("/images/v1/images.s3.kobo.com/", imageHandler)       // FIXME Andrew's notation
-	http.HandleFunc("/content/v1/download.s3.kobo.com/", objectHandler)
+	http.HandleFunc("images.s3.kobo.com", imageHandler)
+	http.HandleFunc(assets, func(w http.ResponseWriter, r *http.Request) {
+		bucketedObjectHandler(r, w, assets)
+	})
+	http.HandleFunc(download, func(w http.ResponseWriter, r *http.Request) {
+		bucketedObjectHandler(r, w, download)
+	})
+	http.HandleFunc(merch, func(w http.ResponseWriter, r *http.Request) {
+		bucketedObjectHandler(r, w, merch)
+	})
+	http.HandleFunc(ops, func(w http.ResponseWriter, r *http.Request) {
+		bucketedObjectHandler(r, w, ops)
+	})
 	http.HandleFunc("/", unsupportedHandler)
 
-	err := http.ListenAndServe(":8081", nil) // nolint
+	// FIXME localhost only
+	err := http.ListenAndServe(":5280", nil) // nolint
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
@@ -50,19 +70,21 @@ func startWebserver() {
 // unsupportedHandler handles bad paths
 func unsupportedHandler(w http.ResponseWriter, r *http.Request) {
 	defer t.Begin(r)()
-
 	reportUnimplemented(w, "No handler for %q",	r.Method + " " + html.EscapeString(r.URL.Path))
 }
 
 // objectHandler handles "ordinary" objects
 func objectHandler(w http.ResponseWriter, r *http.Request) {
 	defer t.Begin(r)()
+	bucketedObjectHandler(r, w, "/content/v1/images.s3.kobo.com/")
+}
 
-	r.URL.Path = strings.TrimPrefix(r.URL.Path,
-		"/content/v1/images.s3.kobo.com/")
+// bucketedObjectHandler handles "ordinary" objects in buckets
+func bucketedObjectHandler(r *http.Request, w http.ResponseWriter, bucketName string) {
+	r.URL.Path = strings.TrimPrefix(r.URL.Path, bucketName)
 	switch r.Method {
 	case "GET":
-		bucket.Get(w, r) // FIXME, unchjecked return
+		bucket.Get(w, r, bucketName) // FIXME, unchecked return
 	case "PUT":
 		// FIXME, add GET, maybe HEAD and DELETE
 		reportUnimplemented(w, "PUT not implemented, %q",
@@ -72,7 +94,7 @@ func objectHandler(w http.ResponseWriter, r *http.Request) {
 			html.EscapeString(r.URL.Path))
 	default:
 		reportUnimplemented(w, "Method not implememted for %q",
-			r.Method + " " + html.EscapeString(r.URL.Path))
+			r.Method+" "+html.EscapeString(r.URL.Path))
 	}
 }
 
@@ -100,14 +122,14 @@ func reportUnimplemented(w http.ResponseWriter, p, q string) {
 	http.Error(w, fmt.Sprintf(p, q),405)
 }
 
-// runLoadTest beats on the web server
+// runSmokeTest checks that the server is up
 func runLoadTest() {
 	time.Sleep(time.Second * 2)
-	key := "/content/v1/download.s3.kobo.com/3HK/index.html"
-	//key := "/content/v1/download.s3.kobo.com/image/albert/100/200/85/False/albert.jpg"
+	key := "download.s3.kobo.com/3HK/index.html"
+	//key := "download.s3.kobo.com/image/albert/100/200/85/False/albert.jpg"
 	//key := "/albert.jpg"
 	initial := time.Now()
-	resp, err := http.Get("http://localhost:8081/" + key)
+	resp, err := http.Get("http://:5280/" + key)
 	if err != nil {
 		panic(fmt.Sprintf("Got an error in the get: %v", err))
 	}

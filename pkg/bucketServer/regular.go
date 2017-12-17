@@ -4,8 +4,6 @@ package bucketServer
 import (
 	"net/http"
 	"github.com/davecb/cephServer/pkg/trace"
-
-	"strings"
 	"github.com/davecb/cephServer/pkg/cephInterface"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
@@ -23,17 +21,13 @@ func New(t trace.Trace) *Bucket {
 	return &Bucket{ t }
 }
 
-// Get tries to get an object from a specific bucket. Errors are wrotten to w
-func (b Bucket) Get(w http.ResponseWriter, r *http.Request)  {  // nolint
+// Get an object from a specific bucket. Errors are written to w
+func (b Bucket) Get(w http.ResponseWriter, r *http.Request, bucket string)  {  // nolint
 	var head *s3.HeadObjectOutput
 	defer b.Begin(r.URL.Path)()
 
 	b.Printf("got a request for %s\n", r.URL.Path)
-
-	// split path into bucket and url
-	// FIXME handle bucket part of prefixes
-	path := strings.TrimPrefix(r.URL.Path, "/content/v1/download.s3.kobo.com/")
-	bytes, head, err := ceph.Get(path, "download.s3.kobo.com")
+	bytes, head, err := ceph.Get(r.URL.Path, bucket)
 	if err != nil {
 		http.Error(w, err.Error(), 999) // FIXME
 	}  else {
