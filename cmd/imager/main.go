@@ -31,6 +31,9 @@ const (   // FIXME Andrew's buckets
 	merch = "/merch.s3.kobo.com/"
 	ops = "/ops.s3.kobo.com/"
 )
+const (
+	host = "10.92.10.201:5280"    // ":5280"
+)
 
 
 func main() {
@@ -45,7 +48,7 @@ func startWebserver() {
 	defer t.Begin()()
 
 	// handle image vs content part of prefixes
-	http.HandleFunc("images.s3.kobo.com", imageHandler)
+	http.HandleFunc("/images.s3.kobo.com/", imageHandler)
 	http.HandleFunc(assets, func(w http.ResponseWriter, r *http.Request) {
 		bucketedObjectHandler(r, w, assets)
 	})
@@ -60,8 +63,8 @@ func startWebserver() {
 	})
 	http.HandleFunc("/", unsupportedHandler)
 
-	// FIXME localhost only
-	err := http.ListenAndServe(":5280", nil) // nolint
+	// FIXME ip addr only ???
+	err := http.ListenAndServe(host, nil) // nolint
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
@@ -71,12 +74,6 @@ func startWebserver() {
 func unsupportedHandler(w http.ResponseWriter, r *http.Request) {
 	defer t.Begin(r)()
 	reportUnimplemented(w, "No handler for %q",	r.Method + " " + html.EscapeString(r.URL.Path))
-}
-
-// objectHandler handles "ordinary" objects
-func objectHandler(w http.ResponseWriter, r *http.Request) {
-	defer t.Begin(r)()
-	bucketedObjectHandler(r, w, "/content/v1/images.s3.kobo.com/")
 }
 
 // bucketedObjectHandler handles "ordinary" objects in buckets
@@ -127,9 +124,9 @@ func runLoadTest() {
 	time.Sleep(time.Second * 2)
 	key := "download.s3.kobo.com/3HK/index.html"
 	//key := "download.s3.kobo.com/image/albert/100/200/85/False/albert.jpg"
-	//key := "/albert.jpg"
+	//key := "albert.jpg"
 	initial := time.Now()
-	resp, err := http.Get("http://:5280/" + key)
+	resp, err := http.Get("http://" + host + "/" + key)
 	if err != nil {
 		panic(fmt.Sprintf("Got an error in the get: %v", err))
 	}
@@ -140,18 +137,20 @@ func runLoadTest() {
 	}
 	t.Printf("\n%s\n%s\n", responseToString(resp), bodyToString(body))
 	resp.Body.Close()         // nolint
-	reportPerformance(initial, requestTime, 0, 0, len(body), resp.StatusCode, key)
+	reportPerformance(initial, requestTime, 0, 0,
+		len(body),  key,resp.StatusCode, "GET")
 
 }
 
 // reportPerformance in standard format
 func reportPerformance(initial time.Time, latency, xferTime,
-	thinkTime time.Duration, length int, rc int, key string) {
+	thinkTime time.Duration, length int, key string, rc int,
+	op string) {
 
-	fmt.Printf("%s %f %f %f %d %s %d GET\n",
+	fmt.Printf("%s %f %f %f %d %s %d %s\n",
 		initial.Format("2006-01-02 15:04:05.000"),
 		latency.Seconds(), xferTime.Seconds(), thinkTime.Seconds(),
-		length, key, rc)
+		length, key, rc, op)
 }
 
 // requestToString provides extra information about an http request if it can
