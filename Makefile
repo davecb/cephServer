@@ -1,10 +1,10 @@
 install: prereqs
-    go install cephServer/pkg/cephInterface
-    go install cephServer/pkg/imageMigrator
-    go install cephServer/pkg/imageResizer
-    go install cephServer/pkg/trace
-    go install cephServer/cmd/imager
+	go install github.com/davecb/cephServer/pkg/cephInterface
+	go install github.com/davecb/cephServer/pkg/imageServer
+	go install github.com/davecb/cephServer/pkg/trace
+	go install github.com/davecb/cephServer/pkg/bucketServer
+	go install github.com/davecb/cephServer/cmd/imager
 
 
 prereqs:  ${HOME}/go/pkg/linux_amd64/github.com/nfnt/resize.a
-    go get github.com/nfnt/resize
+	go get github.com/nfnt/resize
