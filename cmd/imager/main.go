@@ -24,22 +24,24 @@ var t = trace.New(os.Stderr, true) // or (nil, false)
 var img = imageServer.New(t) 
 var bucket = bucketServer.New(t)
 
-const (   // FIXME Andrew's buckets
+const (   // FIXME Andrew's bucket names
 	// buckets must have leading and trailing slashes
+	images = "/images.s3.kobo.com/"
 	assets = "/assets.s3.kobo.com/"
 	download = "/download.s3.kobo.com/"
 	merch = "/merch.s3.kobo.com/"
 	ops = "/ops.s3.kobo.com/"
 )
 const (
-	host = "10.92.10.201:5280"    // ":5280"
+	//host = "10.92.10.201:5280"
+	host = ":5280"
 )
 
 
 func main() {
 	defer t.Begin()()
 
-	go runLoadTest()
+	go runSmokeTest()
 	startWebserver()
 }
 
@@ -48,7 +50,7 @@ func startWebserver() {
 	defer t.Begin()()
 
 	// handle image vs content part of prefixes
-	http.HandleFunc("/images.s3.kobo.com/", imageHandler)
+	http.HandleFunc(images, imageHandler)
 	http.HandleFunc(assets, func(w http.ResponseWriter, r *http.Request) {
 		bucketedObjectHandler(r, w, assets)
 	})
@@ -63,7 +65,7 @@ func startWebserver() {
 	})
 	http.HandleFunc("/", unsupportedHandler)
 
-	// FIXME ip addr only ???
+	// FIXME ip addr seems to disagree with localhost, and vice versa
 	err := http.ListenAndServe(host, nil) // nolint
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
@@ -81,7 +83,7 @@ func bucketedObjectHandler(r *http.Request, w http.ResponseWriter, bucketName st
 	r.URL.Path = strings.TrimPrefix(r.URL.Path, bucketName)
 	switch r.Method {
 	case "GET":
-		bucket.Get(w, r, bucketName) // FIXME, unchecked return
+		bucket.Get(w, r, bucketName)
 	case "PUT":
 		// FIXME, add GET, maybe HEAD and DELETE
 		reportUnimplemented(w, "PUT not implemented, %q",
@@ -120,37 +122,21 @@ func reportUnimplemented(w http.ResponseWriter, p, q string) {
 }
 
 // runSmokeTest checks that the server is up
-func runLoadTest() {
+func runSmokeTest() {
 	time.Sleep(time.Second * 2)
 	key := "download.s3.kobo.com/3HK/index.html"
 	//key := "download.s3.kobo.com/image/albert/100/200/85/False/albert.jpg"
 	//key := "albert.jpg"
-	initial := time.Now()
 	resp, err := http.Get("http://" + host + "/" + key)
 	if err != nil {
 		panic(fmt.Sprintf("Got an error in the get: %v", err))
 	}
 	body, err :=  ioutil.ReadAll(resp.Body)
-	requestTime := time.Since(initial)
 	if err != nil {
 		panic(fmt.Sprintf("Got an error in the body read: %v", err))
 	}
 	t.Printf("\n%s\n%s\n", responseToString(resp), bodyToString(body))
 	resp.Body.Close()         // nolint
-	reportPerformance(initial, requestTime, 0, 0,
-		len(body),  key,resp.StatusCode, "GET")
-
-}
-
-// reportPerformance in standard format
-func reportPerformance(initial time.Time, latency, xferTime,
-	thinkTime time.Duration, length int, key string, rc int,
-	op string) {
-
-	fmt.Printf("%s %f %f %f %d %s %d %s\n",
-		initial.Format("2006-01-02 15:04:05.000"),
-		latency.Seconds(), xferTime.Seconds(), thinkTime.Seconds(),
-		length, key, rc, op)
 }
 
 // requestToString provides extra information about an http request if it can

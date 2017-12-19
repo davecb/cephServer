@@ -28,27 +28,34 @@ func New(t trace.Trace) *Imager {
 }
 
 
-// GetSized gets an image in a specific resize
+// GetSized gets an image in a specific resize, using specific buckets
 func (image Imager) GetSized(w http.ResponseWriter, r *http.Request) {
 	defer image.Begin(r.URL.Path)()
 	downloadBucket := "download.s3.kobo.com"
 	imageBucket := "images.s3.kobo.com"
 
 	fullPath := r.URL.Path
+	// first, do a prerequisite
 	key, width, height, quality, grey, name, imgType, err := image.parseImageURL(fullPath)
 	if err != nil {
 		http.Error(w, "Cannot interpret url " + fullPath , 400)
-	}
-
-	bytes, head, err := ceph.Get(fullPath, imageBucket)
-	if err == nil {
-		// return the file in the resize requested
-		w.Write(bytes)
 		return
 	}
 
-	bytes, head, err = ceph.Get(key, downloadBucket)
-	if err == nil {
+	// next, see if we have exactly the image asked for
+	bytes, head, rc, err := ceph.Get(fullPath, imageBucket)
+	if err == nil && rc == 200 {
+		// return the file in the size requested
+		image.Printf("good full-path get in imager, head = %v\n", head)
+		w.Write(bytes) // nolint ignore error???
+		return
+	}
+	// postcondition: we didn't find the image, so ...
+
+
+	// go looking for the base (big) version
+	bytes, head, rc, err = ceph.Get(key, downloadBucket)
+	if err == nil && rc == 200 {
 		image.Printf("good get in imager, head = %v\n", head)
 		// we have a base file which we can resize
 		if width < largestWidth {

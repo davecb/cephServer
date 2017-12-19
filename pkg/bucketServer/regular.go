@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"github.com/davecb/cephServer/pkg/trace"
 	"github.com/davecb/cephServer/pkg/cephInterface"
-	"github.com/aws/aws-sdk-go/service/s3"
 )
 
 var ceph *cephInterface.S3Proto   // maybe move
@@ -23,16 +22,28 @@ func New(t trace.Trace) *Bucket {
 
 // Get an object from a specific bucket. Errors are written to w
 func (b Bucket) Get(w http.ResponseWriter, r *http.Request, bucket string)  {  // nolint
-	var head *s3.HeadObjectOutput
+	var head map[string]string
 	defer b.Begin(r.URL.Path)()
 
 	b.Printf("got a request for %s\n", r.URL.Path)
-	bytes, head, err := ceph.Get(r.URL.Path, bucket)
+	data, head, rc, err := ceph.Get(r.URL.Path, bucket)
 	if err != nil {
 		http.Error(w, err.Error(), 999) // FIXME
-	}  else {
-		b.Printf("bucket.get worked, head = %v\n", head)
-		w.Write(bytes) // nolint
+	}
+	if rc != 200 {
+		b.Printf("bucket.get failed, head = %v, rc = %d\n",
+			head, rc )
+		http.Error(w, err.Error(), rc)
+	}
+	b.Printf("bucket.get worked, head = %v\n", head)
+	for key, value := range head {
+		if value != "" {
+			w.Header().Set(key, value)
+		}
+	}
+	_, err = w.Write(data)
+	if err != nil {
+		b.Printf("oopsie! %v\n", err) // FIXME log this
 	}
 
 }
