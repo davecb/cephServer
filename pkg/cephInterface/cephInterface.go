@@ -1,9 +1,12 @@
 package cephInterface
 // package cephInterface accesses ceph, currently via authenticated
 // s3-protocol get, put and delete using the Amazon client library.
+//
 // Initially the Amazon library was too buggy, but Marcus Watt of the
-// ceph team debugged it for me. I expect most people will use the
-// Amazon library, even though there is a native rados one for Go.
+// ceph team debugged it for me.
+//
+// I expect most people will use the Amazon library, even though there
+// is a native RADOS one for Go, which looks better...
 
 import (
 	"fmt"
@@ -97,7 +100,9 @@ func (p S3Proto) Get(key, bucket string) ([]byte, map[string]string, int, error)
 		return nil, head, rc, fmt.Errorf(
 			"failed in downloader.Download, %v", err)
 	}
-	head["Content-Length"] = strconv.FormatInt(numBytes, 10)
+	if numBytes > 0 {
+		head["Content-Length"] = strconv.FormatInt(numBytes, 10)
+	}
 	if rc != 200 {
 		reportPerformance(initial, latency, xferTime, 0.0, numBytes, key, rc,	"GET")
 		return nil, head, rc, nil
@@ -134,7 +139,6 @@ func (p S3Proto) Put(contents, path, bucket string) error {
 	//	Body:   lr,
 	//})
 	//responseTime := time.Since(initial) // 				***** Response time ends
-	//// FIXME swap this around
 	//if err == nil {
 	//	fmt.Printf("%s %f 0 0 %d %s 201 PUT\n",
 	//		initial.Format("2006-01-02 15:04:05.000"),
@@ -183,6 +187,7 @@ func getHead(p S3Proto, bucket string, key string, initial time.Time, headers ma
 	}
 	headers["Accept-Ranges"] = *s3head.AcceptRanges
 	headers["Content-Type"] = *s3head.ContentType
+	headers["Content-Length"] = strconv.FormatInt(*s3head.ContentLength, 10)
 	headers["ETag"] = *s3head.ETag
 	headers["Last-Modified"] = s3head.LastModified.Format(time.RFC850)
 
@@ -212,9 +217,6 @@ func getBody(p S3Proto, bucket string, key string) (time.Duration,
 	}
 	return xferTime, buff, numBytes, 200, nil
 }
-
-
-
 
 // mustCreateService creates a connection to an s3-compatible server.
 func mustCreateService(p *S3Proto) {
@@ -254,8 +256,8 @@ func mustCreateService(p *S3Proto) {
 	}
 }
 
-
 // errorCodeToHTTPCode is wimpey! only a few codes (eg, 404) are implemented
+// s3 is pretty hackey in places...
 func errorCodeToHTTPCode(err error) int {
 	aerr, ok := err.(awserr.Error)
 	if !ok {
@@ -271,7 +273,7 @@ func errorCodeToHTTPCode(err error) int {
 
 // reportPerformance in standard format
 func reportPerformance(initial time.Time, latency, xferTime,
-thinkTime time.Duration, length int64, key string, rc int,
+	thinkTime time.Duration, length int64, key string, rc int,
 	op string) {
 
 	fmt.Printf("%s %f %f %f %d %s %d %s\n",

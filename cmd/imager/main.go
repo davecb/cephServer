@@ -3,7 +3,7 @@ package main
 import (
 
 	"github.com/davecb/cephServer/pkg/imageServer"
-	"github.com/davecb/cephServer/pkg/bucketServer"
+	"github.com/davecb/cephServer/pkg/objectServer"
 	"github.com/davecb/cephServer/pkg/trace"
 	
 	"net/http/httputil"
@@ -22,7 +22,7 @@ import (
 // t is a debugging tool shared by the server components
 var t = trace.New(os.Stderr, true) // or (nil, false)
 var img = imageServer.New(t) 
-var bucket = bucketServer.New(t)
+var bucket = objectServer.New(t)
 
 const (   // FIXME Andrew's bucket names
 	// buckets must have leading and trailing slashes

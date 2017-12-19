@@ -1,4 +1,4 @@
-package bucketServer
+package objectServer
 
 
 import (
@@ -9,33 +9,33 @@ import (
 
 var ceph *cephInterface.S3Proto   // maybe move
 
-// Bucket is a storage bucket
-type Bucket struct {
+// Object is a storage bucket
+type Object struct {
 	trace.Trace
 }
 
 // New creates a bucket server
-func New(t trace.Trace) *Bucket {
+func New(t trace.Trace) *Object {
 	ceph = cephInterface.New(t)
-	return &Bucket{ t }
+	return &Object{ t }
 }
 
 // Get an object from a specific bucket. Errors are written to w
-func (b Bucket) Get(w http.ResponseWriter, r *http.Request, bucket string)  {  // nolint
+func (o Object) Get(w http.ResponseWriter, r *http.Request, bucket string)  { // nolint
 	var head map[string]string
-	defer b.Begin(r.URL.Path)()
+	defer o.Begin(r.URL.Path)()
 
-	b.Printf("got a request for %s\n", r.URL.Path)
+	o.Printf("got a request for %s\n", r.URL.Path)
 	data, head, rc, err := ceph.Get(r.URL.Path, bucket)
 	if err != nil {
 		http.Error(w, err.Error(), 999) // FIXME
 	}
 	if rc != 200 {
-		b.Printf("bucket.get failed, head = %v, rc = %d\n",
+		o.Printf("bucket.get failed, head = %v, rc = %d\n",
 			head, rc )
 		http.Error(w, err.Error(), rc)
 	}
-	b.Printf("bucket.get worked, head = %v\n", head)
+	o.Printf("bucket.get worked, head = %v\n", head)
 	for key, value := range head {
 		if value != "" {
 			w.Header().Set(key, value)
@@ -43,7 +43,7 @@ func (b Bucket) Get(w http.ResponseWriter, r *http.Request, bucket string)  {  /
 	}
 	_, err = w.Write(data)
 	if err != nil {
-		b.Printf("oopsie! %v\n", err) // FIXME log this
+		o.Printf("oopsie! %v\n", err) // FIXME log this
 	}
 
 }
