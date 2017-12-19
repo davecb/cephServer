@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"io"
 	"strings"
+	"log"
 )
 
 const largestWidth = 100
@@ -19,12 +20,13 @@ var ceph *cephInterface.S3Proto
 // Imager is a resizing mechanism
 type Imager struct {
 	trace.Trace
+	logger *log.Logger
 }
 
 // New creates an imager-resizer
-func New(t trace.Trace) *Imager {
-	ceph = cephInterface.New(t)
-	return &Imager{ t }
+func New(t trace.Trace, x *log.Logger) *Imager {
+	ceph = cephInterface.New(t, x)
+	return &Imager{ t, x }
 }
 
 
@@ -96,9 +98,11 @@ func (image Imager)  parseImageURL(s string) (key string, width, height, quality
 	image.Printf("tokens = %v\n", tokens)
 	if at <= 0 {
 		// FIXME this may be acceptable at a later time
+		image.logger.Printf("") // FIXME explain the error in the log
 		return "", 0, 0, 0, false, "", "",
 			fmt.Errorf("could not find any / characters in %q, rejected", s)
 	}
+	// FIXME accept "images/<key>", too
 
 	// Proceed from right to left, although this is LL(1)
 	image.Printf("name.type token[%d] = %q\n", at, tokens[at])
@@ -165,6 +169,7 @@ func parseNameComponent(tokens []string, at int) (int, string, string) {
 	var imgType string
 
 	nameAndType := strings.Split(tokens[at], ".")
+	// FIXME handle no name-type pair
 	switch nameAndType[1] {
 	case "jpg", "jpeg", "JPG", "JPEG", "png", "PNG":  // Webp? likely
 		imgType = nameAndType[1]

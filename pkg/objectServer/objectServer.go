@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"github.com/davecb/cephServer/pkg/trace"
 	"github.com/davecb/cephServer/pkg/cephInterface"
+	"log"
 )
 
 var ceph *cephInterface.S3Proto   // maybe move
@@ -12,12 +13,13 @@ var ceph *cephInterface.S3Proto   // maybe move
 // Object is a storage bucket
 type Object struct {
 	trace.Trace
+	x *log.Logger
 }
 
-// New creates a bucket server
-func New(t trace.Trace) *Object {
-	ceph = cephInterface.New(t)
-	return &Object{ t }
+// New creates a object server
+func New(t trace.Trace, x *log.Logger) *Object {
+	ceph = cephInterface.New(t, x)
+	return &Object{ t, x }
 }
 
 // Get an object from a specific bucket. Errors are written to w
@@ -28,7 +30,7 @@ func (o Object) Get(w http.ResponseWriter, r *http.Request, bucket string)  { //
 	o.Printf("got a request for %s\n", r.URL.Path)
 	data, head, rc, err := ceph.Get(r.URL.Path, bucket)
 	if err != nil {
-		http.Error(w, err.Error(), 999) // FIXME
+		http.Error(w, err.Error(), 500)
 	}
 	if rc != 200 {
 		o.Printf("bucket.get failed, head = %v, rc = %d\n",

@@ -21,8 +21,9 @@ import (
 
 // t is a debugging tool shared by the server components
 var t = trace.New(os.Stderr, true) // or (nil, false)
-var img = imageServer.New(t) 
-var bucket = objectServer.New(t)
+var logger = log.New(os.Stderr, "ImageServer", log.Lshortfile|log.LstdFlags)
+var img = imageServer.New(t, logger)
+var bucket = objectServer.New(t, logger)
 
 const (   // FIXME Andrew's bucket names
 	// buckets must have leading and trailing slashes
@@ -38,6 +39,7 @@ const (
 )
 
 
+// main starts the web server, and also a smoke test for it
 func main() {
 	defer t.Begin()()
 
@@ -45,7 +47,7 @@ func main() {
 	startWebserver()
 }
 
-// startWebserver for all image requests
+// startWebserver for all object requests
 func startWebserver() {
 	defer t.Begin()()
 

@@ -20,6 +20,7 @@ import (
 	"github.com/davecb/cephServer/pkg/trace"
 	"sync"
 	"strconv"
+	"log"
 )
 
 
@@ -31,14 +32,16 @@ type S3Proto struct {
 	verbose     bool
 	svc         *s3.S3
 	awsLogLevel aws.LogLevelType
-	           trace.Trace
+	logger		*log.Logger
+	            trace.Trace
 }
 
 var singletonS3 *S3Proto
 var once sync.Once
 
 // New creates a single s3 interface
-func New(t trace.Trace) *S3Proto {
+// stretch goal -- do this with a pipe
+func New(t trace.Trace, x *log.Logger) *S3Proto {
 	if t == nil {
 		 t = trace.New(nil, true)
 	}
@@ -55,10 +58,11 @@ func New(t trace.Trace) *S3Proto {
 		//endpoint: "http://10.92.10.201:80",  gets ServiceStack message in html  'Endpoint' should not be empty.''
 		//endpoint: "http://10.92.10.201:81", ditto
 
-		verbose:  false,
-		s3Key:    "91V7FH4MNMXQW2WRBAZI",
-		s3Secret: "bhZIl6LPMKjm0dHW5zyb23OwNXWsJxAdVLIms5Xh",
-		Trace: t,
+		verbose:  	false,
+		s3Key:    	"91V7FH4MNMXQW2WRBAZI",
+		s3Secret: 	"bhZIl6LPMKjm0dHW5zyb23OwNXWsJxAdVLIms5Xh",
+		logger: 	x,
+		Trace: 		t,
 	}
 	once.Do(func() {
 		mustCreateService(&p)
@@ -67,7 +71,8 @@ func New(t trace.Trace) *S3Proto {
 	return singletonS3
 }
 
-// Get does a head-and-get operation from an s3Protocol target and times SOMETHING.
+// Get does a head-and-get operation from an s3Protocol target and times it.
+// the time will have an extra half-RTT in it
 func (p S3Proto) Get(key, bucket string) ([]byte, map[string]string, int, error) {
 	var rc int
 	var head = make(map[string]string)
@@ -113,7 +118,6 @@ func (p S3Proto) Get(key, bucket string) ([]byte, map[string]string, int, error)
 }
 
 // Put puts a file and times it
-// error return is used only by mkLoadTestFiles  FIXME
 func (p S3Proto) Put(contents, path, bucket string) error {
 	defer p.Begin("<contents>", path, bucket)()
 	return fmt.Errorf("put is not implemented yet")
@@ -176,7 +180,7 @@ func getHead(p S3Proto, bucket string, key string, initial time.Time, headers ma
 	})
 	latency := time.Since(initial) // 	        	***** Latency ends
 	if err != nil {
-		p.Printf("HeadObject err %v", err) // FIXME log this
+		p.logger.Printf("HeadObject err %v", err) // FIXME log this
 		rc = errorCodeToHTTPCode(err)
 		if rc < 0 {
 			// it's a real error, say so
@@ -210,7 +214,7 @@ func getBody(p S3Proto, bucket string, key string) (time.Duration,
 		rc := errorCodeToHTTPCode(err)
 		if rc < 0 {
 			// an error, not a 404 or the like
-			// FIXME log this
+			p.logger.Printf("downloader.Download err %v", err)
 			return xferTime, buff, numBytes, rc, err
 		}
 		return xferTime, buff, numBytes, rc, nil
