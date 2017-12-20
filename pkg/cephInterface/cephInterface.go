@@ -47,17 +47,8 @@ func New(t trace.Trace, x *log.Logger) *S3Proto {
 	}
 	defer t.Begin(t)()
 	var p = S3Proto{
-		endpoint: "http://10.92.10.201:7480",	// FIXME This seems to be haproxy->RCDN, as it returns fids
-		//endpoint: "http://10.92.100.1:7480",  // as does this.
-		//endpoint: "http://10.92.100.1:1080", connection refused
-		//endpoint: "http://10.92.100.1:5666", connection reset by peer
-		//endpoint: "http://10.92.100.1:6789", malformed HTTP status code
-		//endpoint: "http://10.92.100.1:8443", malformed HTTP status code
-
-		//endpoint: "http://10.92.10.201:8500", // FIXME 404 suggests it may be something
-		//endpoint: "http://10.92.10.201:80",  gets ServiceStack message in html  'Endpoint' should not be empty.''
-		//endpoint: "http://10.92.10.201:81", ditto
-
+		//endpoint: "http://10.121.10.201:7480",   // IAD3, also 202, ...
+		endpoint: "http://10.92.10.201:7480",  // AMS1
 		verbose:  	false,
 		s3Key:    	"91V7FH4MNMXQW2WRBAZI",
 		s3Secret: 	"bhZIl6LPMKjm0dHW5zyb23OwNXWsJxAdVLIms5Xh",
@@ -194,6 +185,7 @@ func getHead(p S3Proto, bucket string, key string, initial time.Time, headers ma
 	headers["Content-Length"] = strconv.FormatInt(*s3head.ContentLength, 10)
 	headers["ETag"] = *s3head.ETag
 	headers["Last-Modified"] = s3head.LastModified.Format(time.RFC850)
+	// add any others you want notably "Metadata"
 
 	return latency, headers, rc, err
 }
