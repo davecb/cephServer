@@ -63,7 +63,7 @@ func New(t trace.Trace, x *log.Logger) *S3Proto {
 }
 
 // Get does a head-and-get operation from an s3Protocol target and times it.
-// the time will have an extra half-RTT in it
+// the time will have an extra half-RTT in it because of the s3 architecture
 func (p S3Proto) Get(key, bucket string) ([]byte, map[string]string, int, error) {
 	var rc int
 	var head = make(map[string]string)
@@ -88,7 +88,7 @@ func (p S3Proto) Get(key, bucket string) ([]byte, map[string]string, int, error)
 		return nil, head, rc, nil
 	}
 
-	// get body of object
+	// get body (only) of object
 	xferTime, buff, numBytes, rc, err := getBody(p, bucket, key)
 	if err != nil {
 		reportPerformance(initial, latency, xferTime,
@@ -157,7 +157,30 @@ func (p S3Proto) Put(contents, path, bucket string) error {
 	//return fmt.Errorf("unable to upload %q to %q, %v", path, conf.S3Bucket, err)
 }
 
-// minions -- these do work and disambiguate err from "rc != 200"
+// Head does a head operation on an s3Protocol target and times it.
+func (p S3Proto) Head(key, bucket string) (map[string]string, int, error) {
+	var rc int
+	var head= make(map[string]string)
+	defer p.Begin(key, bucket)()
+
+	if p.svc == nil { // FIXME, belt and suspenders, drop
+		panic(fmt.Errorf("in cephInterface.Get, p.svc = %v", p.svc))
+	}
+
+	// get head, see if object exists
+	initial := time.Now() //                        ***** Time starts
+	latency, head, rc, err := getHead(p, bucket, key, initial, head)
+	if err != nil {
+		reportPerformance(initial, latency, 0.0,
+			0.0, 0, key, rc, "HEAD")
+		return head, rc, fmt.Errorf(
+			"failed in svc.headObject, %v", err)
+	}
+	reportPerformance(initial, latency, 0.0,
+		0.0, 0, key, rc, "HEAD")
+	return head, rc, nil
+}
+
 
 // getHead -- get the head information, specifically including headers
 // See also https://docs.aws.amazon.com/goto/WebAPI/s3-2006-03-01/HeadObjectOutput
@@ -180,6 +203,7 @@ func getHead(p S3Proto, bucket string, key string, initial time.Time, headers ma
 		// special case: just a non-success code from server
 		return latency, nil, rc, nil
 	}
+	// CAVEAT, this only does a subset: we should parse s3head as json
 	headers["Accept-Ranges"] = *s3head.AcceptRanges
 	headers["Content-Type"] = *s3head.ContentType
 	headers["Content-Length"] = strconv.FormatInt(*s3head.ContentLength, 10)
@@ -189,6 +213,8 @@ func getHead(p S3Proto, bucket string, key string, initial time.Time, headers ma
 
 	return latency, headers, rc, err
 }
+
+// minions -- these do work and disambiguate err from "rc != 200"
 
 // getBody -- get a body
 func getBody(p S3Proto, bucket string, key string) (time.Duration,

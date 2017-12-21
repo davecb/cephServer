@@ -126,10 +126,10 @@ func reportUnimplemented(w http.ResponseWriter, p, q string) {
 // runSmokeTest checks that the server is up
 func runSmokeTest() {
 	time.Sleep(time.Second * 2)
-	//key := "download.s3.kobo.com/3HK/index.html"  // valid
+	key := "download.s3.kobo.com/3HK/index.html"  // valid
 	//key := "download.s3.kobo.com/image/albert/100/200/85/False/albert.jpg"  // TBA
-	// key := "albert.jpg" // no bucket, fail 404
-	key := "download.s3.kobo.com/absent-file.jpg"  // Invalid, 404
+	//key := "albert.jpg" // no bucket, fail 404
+	//key := "download.s3.kobo.com/absent-file.jpg"  // Invalid, 404
 	resp, err := http.Get("http://" + host + "/" + key)
 	if err != nil {
 		panic(fmt.Sprintf("Got an error in the get: %v", err))
