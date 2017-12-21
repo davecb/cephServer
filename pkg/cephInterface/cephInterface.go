@@ -171,10 +171,10 @@ func getHead(p S3Proto, bucket string, key string, initial time.Time, headers ma
 	})
 	latency := time.Since(initial) // 	        	***** Latency ends
 	if err != nil {
-		p.logger.Printf("HeadObject err %v", err) // FIXME log this
 		rc = errorCodeToHTTPCode(err)
 		if rc < 0 {
 			// it's a real error, say so
+			p.logger.Printf("HeadObject err %v", err) // FIXME log this
 			return latency, nil, rc, err
 		}
 		// special case: just a non-success code from server

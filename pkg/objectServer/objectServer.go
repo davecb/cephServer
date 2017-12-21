@@ -35,7 +35,7 @@ func (o Object) Get(w http.ResponseWriter, r *http.Request, bucket string)  { //
 	if rc != 200 {
 		o.Printf("bucket.get failed, head = %v, rc = %d\n",
 			head, rc )
-		http.Error(w, err.Error(), rc)
+		http.Error(w, http.StatusText(rc), rc)   // FIXME, panics
 	}
 	o.Printf("bucket.get worked, head = %v\n", head)
 	for key, value := range head {

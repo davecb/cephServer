@@ -1,4 +1,4 @@
-package objectServer
+package imageServer
 
 import (
 	"github.com/davecb/cephServer/pkg/trace"
@@ -14,7 +14,7 @@ import (
 
 var tt = trace.New(os.Stderr, true) // or (nil, false)
 var logger = log.New(ioutil.Discard, "ImageServer", log.Lshortfile|log.LstdFlags)
-var objServ *Object
+var imgServ *Imager
 const (
 	goodpath = "/3HK/index.html"
 	badpath = "/no-such-file"
@@ -24,7 +24,7 @@ const (
 
 func TestGettingObjects(t *testing.T) {
 	tt.Begin(t)()
-	objServ = New(tt, logger)
+	imgServ = New(tt, logger)
 
 	Convey("When all good\n", t, func() {
 		rGood, err := http.NewRequest("GET", goodpath, nil)
@@ -33,7 +33,7 @@ func TestGettingObjects(t *testing.T) {
 		}
 		Convey("gets a 200 OK\n", func() {
 			w := httptest.NewRecorder()
-			objServ.Get(w, rGood, goodbucket)
+			imgServ.GetSized(w, rGood,)
 			So(w.Result().StatusCode, ShouldEqual, 200)
 		})
 	})
@@ -45,7 +45,7 @@ func TestGettingObjects(t *testing.T) {
 		}
 		Convey("gets a 404 no such file \n", func() {
 			w := httptest.NewRecorder()
-			objServ.Get(w, rBad, goodbucket)
+			imgServ.GetSized(w, rBad)
 			So(w.Result().StatusCode, ShouldEqual, 404)
 		})
 	})
@@ -57,12 +57,32 @@ func TestGettingObjects(t *testing.T) {
 		}
 		Convey("gets 404, too\n", func() {
 			w := httptest.NewRecorder()
-			objServ.Get(w, rBad, badbucket)
+			imgServ.GetSized(w, rBad)
 			So(w.Result().StatusCode, ShouldEqual, 404)
 		})
 
 
 	})
+
+
+	Convey("when bad syntax", t, func() {
+		// So(w.Result().StatusCode, ShouldEqual, 500)
+	})
+
+	Convey("when no precreated", t,func() {
+		// So(w.Result().StatusCode, ShouldEqual, 202)
+	})
+
+	Convey("when no master", t,func() {
+		// So(w.Result().StatusCode, ShouldEqual, 202)
+	})
+
+
+	Convey("when no mogile", t, func() {
+		// So(w.Result().StatusCode, ShouldEqual, 404)
+	})
+
+
 
 	//Convey("When server down\n", t, func() {
 	//	rGood, err := http.NewRequest("GET", goodpath, nil)
@@ -71,7 +91,7 @@ func TestGettingObjects(t *testing.T) {
 	//	}
 	//	Convey("gets a timeout\n", func() {
 	//		w := httptest.NewRecorder()
-	//		objServ.Get(w, rGood, goodbucket)
+	//		imgServ.Get(w, rGood, goodbucket)
 	//		rc := w.Result().StatusCode
 	//		So(rc, ShouldEqual, 500)
 	//	})
