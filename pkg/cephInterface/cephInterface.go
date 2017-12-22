@@ -109,7 +109,7 @@ func (p S3Proto) Get(key, bucket string) ([]byte, map[string]string, int, error)
 }
 
 // Put puts a file and times it
-func (p S3Proto) Put(contents, path, bucket string) error {
+func (p S3Proto) Put(contents []byte, path, bucket string) error {
 	defer p.Begin("<contents>", path, bucket)()
 
 	// if contents is empty, fail and then log.

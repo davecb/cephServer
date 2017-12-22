@@ -2,8 +2,8 @@ package imageServer
 
 
 // MigrateAndResizeImage gets a file, saves it and calls resize
-func (i imager) migrateAndResize(content []byte, key string, width, height, quality uint, grayScale bool, name, imgType string) string {
+func (i imager) migrateAndResize(content []byte, key string, width, height, quality uint, grayScale bool, name, imgType string) []byte {
 	defer i.Begin(key, width, height, quality, grayScale, name, imgType)()
-	return ""
+	return []byte("" )
 }
 // FIXME wrap this in a check, log on error

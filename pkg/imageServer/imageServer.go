@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"strconv"
 	"net/http"
-	"io"
 	"strings"
 	"log"
 )
@@ -65,15 +64,15 @@ func (i imager) GetSized(w http.ResponseWriter, r *http.Request) {
 		if width < largestWidth {
 			// we can afford to do it in-line
 			i.Printf("going to resize in-line\n")
-			s := i.resize(bytes, key, width, height,
+			b := i.resize(bytes, key, width, height,
 				quality, grey, name, imgType)
 			// return it, and save in the background
-			write(w, s)
-			go ceph.Put(s, fullPath, imageBucket) // nolint
+			write(w, b)
+			go ceph.Put(b, fullPath, imageBucket) // nolint
 		} else {
 			// we background it and return a dummy FIXME or the original
 			i.Printf("going to resize in background\n")
-			write(w, i.getDummy(imgType))
+			write(w, bytes)
 			go func() {
 				ceph.Put(i.resize(bytes, key, // nolint
 					width, height, quality, grey, name, imgType), fullPath, imageBucket)
@@ -92,8 +91,8 @@ func (i imager) GetSized(w http.ResponseWriter, r *http.Request) {
 }
 
 // write logs write errors
-func write(w http.ResponseWriter, s string) {
-	_, err := io.WriteString(w, s)
+func write(w http.ResponseWriter, b []byte) {
+	_, err := w.Write(b)
 	if err != nil {
 		// log it
 	}
@@ -246,8 +245,8 @@ func decrement(i int) int {
 
 
 // return a dummy image in the appropriate type and a selected resize
-func (i imager) getDummy(imageType string) string {
+func (i imager) getDummy(imageType string) []byte {
 	defer i.Begin()()
-	return "dummy image"
+	return []byte("dummy image")
 }
 
