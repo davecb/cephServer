@@ -111,6 +111,9 @@ func (p S3Proto) Get(key, bucket string) ([]byte, map[string]string, int, error)
 // Put puts a file and times it
 func (p S3Proto) Put(contents, path, bucket string) error {
 	defer p.Begin("<contents>", path, bucket)()
+
+	// if contents is empty, fail and then log.
+	// Caller may ignore the failure
 	return fmt.Errorf("put is not implemented yet")
 	//if conf.Debug {
 	//	log.Printf("in AmazonS3Put(%s, %s, %d)\n", p.prefix, path, size)
