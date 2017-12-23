@@ -21,6 +21,7 @@ import (
 	"sync"
 	"strconv"
 	"log"
+	"encoding/json"
 )
 
 
@@ -206,15 +207,40 @@ func getHead(p S3Proto, bucket string, key string, initial time.Time, headers ma
 		// special case: just a non-success code from server
 		return latency, nil, rc, nil
 	}
-	// CAVEAT, this only does a subset: we should parse s3head as json
-	headers["Accept-Ranges"] = *s3head.AcceptRanges
-	headers["Content-Type"] = *s3head.ContentType
-	headers["Content-Length"] = strconv.FormatInt(*s3head.ContentLength, 10)
-	headers["ETag"] = *s3head.ETag
-	headers["Last-Modified"] = s3head.LastModified.Format(time.RFC850)
-	// add any others you want notably "Metadata"
+	// CAVEAT, this only does part of the implemented subset
+	setHeader(headers, "Accept-Ranges", s3head.AcceptRanges)
+	setHeader(headers,"Content-Disposition",  s3head.ContentDisposition)
+	setHeader(headers,"Content-Encoding",  s3head.ContentEncoding)
+	setHeader(headers,"Content-Type", s3head.ContentType)
+	setHeader(headers,"Content-Language",  s3head.ContentLanguage)
+	s := strconv.FormatInt(*s3head.ContentLength, 10)
+	setHeader(headers,"Content-Length", &s)
+	if s3head.DeleteMarker != nil {
+		headers["x-amz-delete-marker"] = strconv.FormatBool(*s3head.DeleteMarker)
+	}
+	setHeader(headers,"ETag", s3head.ETag)
+	setHeader(headers,"x-amz-expiration",  s3head.Expiration)
+	setHeader(headers,"Expires", s3head.Expires)
+	if s3head.LastModified != nil {
+		headers["Last-Modified"] = s3head.LastModified.Format(time.RFC850)
+	}
+	if s3head.Metadata != nil {
+		j, _ := json.Marshal(s3head.Metadata)
+		headers["Metadata"] = string(j)
+	}
+	if s3head.PartsCount != nil {
+		headers["x-amz-mp-parts-count"] = strconv.FormatInt(*s3head.PartsCount, 10)
+	}
+	setHeader(headers,"x-amz-replication-status", s3head.ReplicationStatus)
+	setHeader(headers,"x-amz-storage-class",  s3head.StorageClass)
+	setHeader(headers,"x-amz-version-id",  s3head.VersionId)
 
 	return latency, headers, rc, err
+}
+func setHeader(headers map[string]string, k string, v *string) {
+	if v != nil {
+		headers[k] = *v
+	}
 }
 
 // minions -- these do work and disambiguate err from "rc != 200"

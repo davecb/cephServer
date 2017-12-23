@@ -1,8 +1,6 @@
 package imageServer
 
 import (
-
-
 	"github.com/davecb/cephServer/pkg/cephInterface"
 	"github.com/davecb/cephServer/pkg/trace"
 
@@ -24,10 +22,10 @@ type imager struct {
 }
 
 
-// New creates an imager-resizer
+// New creates an image-resizer
 func New(x trace.Trace, y *log.Logger) *imager {
 	ceph = cephInterface.New(x, y)
-	t = x // this is subtely odd.
+	t = x // this is subtly odd.
 	return &imager{ x,y }
 }
 
