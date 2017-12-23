@@ -21,7 +21,8 @@ import (
 
 // t is a debugging tool shared by the server components
 var t = trace.New(os.Stderr, true) // or (nil, false)
-var logger = log.New(os.Stderr, "ImageServer", log.Lshortfile|log.LstdFlags)
+// logger goes to stdout, as do timing records for each access
+var logger = log.New(os.Stdout, "", log.Ldate | log.Ltime | log.Lshortfile)
 var img = imageServer.New(t, logger)
 var bucket = objectServer.New(t, logger)
 

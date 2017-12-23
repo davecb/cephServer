@@ -33,12 +33,12 @@ type S3Proto struct {
 	verbose     bool
 	svc         *s3.S3
 	awsLogLevel aws.LogLevelType
-	logger		*log.Logger
 	            trace.Trace
 }
 
 var singletonS3 *S3Proto
 var once sync.Once
+var logger		*log.Logger
 
 // New creates a single s3 interface
 // stretch goal -- do this with a pipe
@@ -46,14 +46,14 @@ func New(t trace.Trace, x *log.Logger) *S3Proto {
 	if t == nil {
 		 t = trace.New(nil, true)
 	}
-	defer t.Begin(t)()
+	logger = x
+	defer t.Begin()()
 	var p = S3Proto{
 		//endpoint: "http://10.121.10.201:7480",   // IAD3, also 202, ...
 		endpoint: "http://10.92.10.201:7480",  // AMS1
 		verbose:  	false,
 		s3Key:    	"91V7FH4MNMXQW2WRBAZI",
 		s3Secret: 	"bhZIl6LPMKjm0dHW5zyb23OwNXWsJxAdVLIms5Xh",
-		logger: 	x,
 		Trace: 		t,
 	}
 	once.Do(func() {
@@ -201,10 +201,10 @@ func getHead(p S3Proto, bucket string, key string, initial time.Time, headers ma
 		rc = errorCodeToHTTPCode(err)
 		if rc < 0 {
 			// it's a real error, say so
-			p.logger.Printf("HeadObject err %v", err) // FIXME log this
+			logger.Printf("INFO, HeadObject failed %v", err)
 			return latency, nil, rc, err
 		}
-		// special case: just a non-success code from server
+		// normal case: just a non-success code from server
 		return latency, nil, rc, nil
 	}
 	// CAVEAT, this only does part of the implemented subset
@@ -261,7 +261,7 @@ func getBody(p S3Proto, bucket string, key string) (time.Duration,
 		rc := errorCodeToHTTPCode(err)
 		if rc < 0 {
 			// an error, not a 404 or the like
-			p.logger.Printf("downloader.Download err %v", err)
+			logger.Printf("INFO, downloader.Download failed, %v", err)
 			return xferTime, buff, numBytes, rc, err
 		}
 		return xferTime, buff, numBytes, rc, nil

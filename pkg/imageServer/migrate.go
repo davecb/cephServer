@@ -6,4 +6,4 @@ func (i imager) migrateAndResize(content []byte, key string, width, height, qual
 	defer t.Begin(key, width, height, quality, grayScale, name, imgType)()
 	return []byte("" )
 }
-// FIXME wrap this in a check, log on error
+

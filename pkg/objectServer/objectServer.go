@@ -12,7 +12,7 @@ var ceph *cephInterface.S3Proto   // maybe move
 
 // Object is a storage bucket
 type Object struct {
-	logger *log.Logger
+	*log.Logger
 }
 var t trace.Trace
 
@@ -28,17 +28,19 @@ func (o Object) Get(w http.ResponseWriter, r *http.Request, bucket string)  { //
 	var head map[string]string
 	defer t.Begin(r.URL.Path)()
 
-	t.Printf("got a request for %s\n", r.URL.Path)
 	data, head, rc, err := ceph.Get(r.URL.Path, bucket)
 	if err != nil {
+		// log it and return a 500
+		o.Printf("ERROR, could not read %v from ceph, %v\n",
+			r, err)
 		http.Error(w, err.Error(), 500)
 	}
 	if rc != 200 {
-		t.Printf("bucket.get failed, head = %v, rc = %d\n",
-			head, rc )
-		http.Error(w, http.StatusText(rc), rc)   // FIXME, panics
+		t.Printf("get %v failed, head = %v, rc = %d\n",
+			r, head, rc)
+		http.Error(w, http.StatusText(rc), rc)
 	}
-	t.Printf("bucket.get worked, head = %v\n", head)
+	t.Printf("get worked, head = %v\n", head)
 	for key, value := range head {
 		if value != "" {
 			w.Header().Set(key, value)
@@ -46,7 +48,9 @@ func (o Object) Get(w http.ResponseWriter, r *http.Request, bucket string)  { //
 	}
 	_, err = w.Write(data)
 	if err != nil {
-		t.Printf("oopsie! %v\n", err) // FIXME log this
+		// log and try to return 500 via the broken ResponseWriter
+		o.Printf("ERROR, could not write to ResponseWriter, %v\n", err)
+		http.Error(w, err.Error(), 500)
 	}
 
 }
