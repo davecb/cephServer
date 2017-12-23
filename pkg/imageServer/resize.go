@@ -7,7 +7,7 @@ import (
 
 // Image strictly resizes an image. Must return something valid
 func (i imager) resize(contents []byte, key string, width, height, quality uint, grayScale bool, name, imgType string) []byte {
-	defer i.Begin("<contents>", key, width, height, quality, grayScale, name, imgType)()
+	defer t.Begin("<contents>", key, width, height, quality, grayScale, name, imgType)()
 
 	return []byte("")
 	// FIXME wrap this in a check, log on error

@@ -17,7 +17,6 @@ var t trace.Trace
 
 // imager is a resizing mechanism
 type imager struct {
-	trace.Trace
 	logger *log.Logger
 }
 
@@ -25,8 +24,8 @@ type imager struct {
 // New creates an image-resizer
 func New(x trace.Trace, y *log.Logger) *imager {
 	ceph = cephInterface.New(x, y)
-	t = x // this is subtly odd.
-	return &imager{ x,y }
+	t = x
+	return &imager{ y }
 }
 
 
