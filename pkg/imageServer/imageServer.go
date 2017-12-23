@@ -15,6 +15,7 @@ import (
 
 const largestWidth = 100
 var ceph *cephInterface.S3Proto
+var t trace.Trace
 
 // imager is a resizing mechanism
 type imager struct {
@@ -24,21 +25,22 @@ type imager struct {
 
 
 // New creates an imager-resizer
-func New(t trace.Trace, x *log.Logger) *imager {
-	ceph = cephInterface.New(t, x)
-	return &imager{ t, x }
+func New(x trace.Trace, y *log.Logger) *imager {
+	ceph = cephInterface.New(x, y)
+	t = x // this is subtely odd.
+	return &imager{ x,y }
 }
 
 
 // GetSized gets an image in a specific resize, using specific buckets
 func (i imager) GetSized(w http.ResponseWriter, r *http.Request) {
-	defer i.Begin(r.URL.Path)()
+	defer t.Begin(r.URL.Path)()
 	downloadBucket := "download.s3.kobo.com"
 	imageBucket := "images.s3.kobo.com"
 
 	fullPath := r.URL.Path
 	// first, do a prerequisite
-	key, width, height, quality, grey, name, imgType, err := i.parseImageURL(fullPath)
+	key, width, height, quality, grey, name, imgType, err := parseImageURL(fullPath)
 	if err != nil {
 		http.Error(w, "Cannot interpret url " + fullPath , 400)
 		return
@@ -48,30 +50,32 @@ func (i imager) GetSized(w http.ResponseWriter, r *http.Request) {
 	bytes, head, rc, err := ceph.Get(fullPath, imageBucket)
 	if err == nil && rc == 200 {
 		// return the file in the size requested
-		i.Printf("found the full path in imager, head = %v\n", head)
-		w.Write(bytes) // nolint ignore error???
+		t.Printf("found the full path in imager, head = %v\n", head)
+		w.Write(bytes) // nolint ignore error???  FIXME
 		return
 	}
-	i.Printf("didn't find the full path %s, trying for base\n", fullPath)
+	t.Printf("didn't find the full path %s, trying for base\n", fullPath)
 	// postcondition: we didn't find the image, so ...
 
 
-	// go looking for the base (big) version to resize
-	bytes, head, rc, err = ceph.Get(key, downloadBucket)
+	// go looking for the base (big) version to resize. Note the images
+	// have a prefix and the downloads don't. This is different from
+	// mogilefs, which saved both with an images/prefix.
+	bytes, head, rc, err = ceph.Get("images/" + key, downloadBucket)
 	if err == nil && rc == 200 {
-		i.Printf("found the base in imager, head = %v\n", head)
+		t.Printf("found the base in imager, head = %v\n", head)
 		// we have a base file which we can resize
 		if width < largestWidth {
 			// we can afford to do it in-line
-			i.Printf("going to resize in-line\n")
+			t.Printf("going to resize in-line\n")
 			b := i.resize(bytes, key, width, height,
 				quality, grey, name, imgType)
 			// return it, and save in the background
 			write(w, b)
 			go ceph.Put(b, fullPath, imageBucket) // nolint
 		} else {
-			// we background it and return a dummy FIXME or the original
-			i.Printf("going to resize in background\n")
+			// we background it and return either a dummy FIXME or the original
+			t.Printf("going to resize in background\n")
 			write(w, bytes)
 			go func() {
 				ceph.Put(i.resize(bytes, key, // nolint
@@ -80,14 +84,17 @@ func (i imager) GetSized(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	i.Printf("didn't find the base, try for a migration\n")
+	t.Printf("didn't find the base, don't try for a migration, just fail\n")
+	// FIXME log this
+	http.Error(w, "file not found, no master to create from", 404)
 
-	// we lack a base, so background a migrate-then-resize, return a dummy
-	write(w, i.getDummy(imgType)) // nolint
-	go func() {
-		ceph.Put(i.migrateAndResize(bytes, // nolint
-			key, width, height, quality, grey, name, imgType), fullPath, imageBucket)
-	}()
+	// Alternate teatment: we lack a base, so background a
+	// migrate-then-resize operation and return a dummy
+	//write(w, i.getDummy(imgType)) // nolint
+	//go func() {
+	//	ceph.Put(i.migrateAndResize(bytes, // nolint
+	//		key, width, height, quality, grey, name, imgType), fullPath, imageBucket)
+	//}()
 }
 
 // write logs write errors
@@ -100,33 +107,33 @@ func write(w http.ResponseWriter, b []byte) {
 
 
 // handle the imager-specific parsing problem
-func (i imager) parseImageURL(s string) (key string, width, height, quality uint,
+func parseImageURL(s string) (key string, width, height, quality uint,
 	grayScale bool, name, imgType string, err error) {
 	const defaultQuality = 85
 
-	defer i.Begin()()
+	defer t.Begin()()
 	tokens := strings.Split(s, "/")
 	at := len(tokens) - 1
-	i.Printf("tokens = %v\n", tokens)
+	t.Printf("tokens = %v\n", tokens)
 	if at <= 0 {
 		// FIXME this may be acceptable at a later time
-		i.logger.Printf("") // FIXME explain the error in the log
+		// FIXME explain the error in the log
 		return "", 0, 0, 0, false, "", "",
 			fmt.Errorf("could not find any / characters in %q, rejected", s)
 	}
 	// FIXME accept "images/<key>", too
 
 	// Proceed from right to left, although this is LL(1)
-	i.Printf("name.type token[%d] = %q\n", at, tokens[at])
-	at, name, imgType = i.parseNameComponent(tokens, at)
+	t.Printf("name.type token[%d] = %q\n", at, tokens[at])
+	at, name, imgType = parseNameComponent(tokens, at)
 
 	// We are now before the name, expecting a boolean, a number or a text key
-	i.Printf("quality token[%d] = %q\n", at, tokens[at])
-	at, grayScale = i.parseGrayscale(tokens, at)
+	t.Printf("quality token[%d] = %q\n", at, tokens[at])
+	at, grayScale = parseGrayscale(tokens, at)
 
 	// we are now past (sorta) grayScale, expecting a quality,
 	// a height, a width or a text key , in that order
-	i.Printf("quality token[%d] = %q\n", at, tokens[at])
+	t.Printf("quality token[%d] = %q\n", at, tokens[at])
 	u, err := strconv.ParseUint(tokens[at], 10, 64)
 	if err != nil {
 		// not a number, and the returned value is 0,
@@ -142,7 +149,7 @@ func (i imager) parseImageURL(s string) (key string, width, height, quality uint
 
 	// We are sorta past quality, looking for one of
 	// a height, a width or a text key
-	i.Printf("height token[%d] = %q\n", at, tokens[at])
+	t.Printf("height token[%d] = %q\n", at, tokens[at])
 	u, err = strconv.ParseUint(tokens[at], 10, 64)
 	if err != nil {
 		// height is dissed by the imager, so 0 is ok
@@ -153,7 +160,7 @@ func (i imager) parseImageURL(s string) (key string, width, height, quality uint
 	}
 
 	// Headed toward just width and key
-	i.Printf("width token[%d] = %q\n", at, tokens[at])
+	t.Printf("width token[%d] = %q\n", at, tokens[at])
 	u, err = strconv.ParseUint(tokens[at], 10, 64)
 	if err != nil {
 		width = 0
@@ -163,7 +170,7 @@ func (i imager) parseImageURL(s string) (key string, width, height, quality uint
 	}
 
 	// OK, anything else is key, even if it has slashes in it
-	i.Printf("key token[%d] = %q\n", at, tokens[at])
+	t.Printf("key token[%d] = %q\n", at, tokens[at])
 	for j := 0; j <= at; j++ {
 		if key == "" {
 			key = tokens[j]
@@ -171,18 +178,17 @@ func (i imager) parseImageURL(s string) (key string, width, height, quality uint
 			key = key + "/" + tokens[j]
 		}
 	}
-	i.Printf("key = %q\n", key)
+	t.Printf("key = %q\n", key)
 	return key, width, height, quality, grayScale, name, imgType, nil
 }
 
 
 // parseNameComponent parses strings like name.gif
-func (i imager) parseNameComponent(tokens []string, at int) (int, string, string) {
+func parseNameComponent(tokens []string, at int) (int, string, string) {
 	var imgType string
 
 
 	nameAndType := strings.Split(tokens[at], ".")
-	fmt.Printf("nameAndType=%v\n", nameAndType)
 	if len(nameAndType) == 1 {
 		var name, imgType string
 		s :=  tokens[at]
@@ -217,7 +223,7 @@ func imageType(s string) string {
 }
 
 // parseGrayscale sees if this token is a grayscale true or false
-func (i imager) parseGrayscale(tokens []string, at int) (int, bool) {
+func parseGrayscale(tokens []string, at int) (int, bool) {
 	var  grayScale bool
 
 	switch tokens[at] {
@@ -246,7 +252,7 @@ func decrement(i int) int {
 
 // return a dummy image in the appropriate type and a selected resize
 func (i imager) getDummy(imageType string) []byte {
-	defer i.Begin()()
+	defer t.Begin()()
 	return []byte("dummy image")
 }
 

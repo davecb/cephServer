@@ -13,7 +13,7 @@ var ceph *cephInterface.S3Proto   // maybe move
 // Object is a storage bucket
 type Object struct {
 	trace.Trace
-	x *log.Logger
+	logger *log.Logger
 }
 
 // New creates a object server

@@ -8,57 +8,39 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"net/http"
 	"net/http/httptest"
-	//"io/ioutil" // for ioutil.Discard
 	"os"
+	"io/ioutil"
 )
 
-var tt = trace.New(os.Stderr, true) // os.Stderr, true) or (nil, false)
-var logger = log.New(os.Stdout, "ImageServer", log.Lshortfile|log.LstdFlags)
+var tt trace.Trace
+var logger *log.Logger   // FIXME this poses a problem
 var imgServ *imager
-const (
-	goodpath = "/3HK/index.html"
-	badpath = "/no-such-file"
 
-	goodkey = "/image/albert/100/200/85/False/albert.jpg"
-	notype = "/image/albert/100/200/85/False/albert"
-	noname = "/image/albert/100/200/85/False/.jpg"
-	noname2 = "/image/albert/100/200/85/False/jpg"
-	nocolor = "/image/albert/100/200/85/albert.jpg"
-	noquality = "/image/albert/100/200/False/albert.jpg"
-	noheight = "/image/albert/100/85/False/albert.jpg"
-	nowidth = "/image/albert/200/85/False/albert.jpg"
-	nokey = "//100/200/85/False/albert.jpg"
+const (
+
+
+	goodkey   = "00000b30-bbc6-4315-9b0f-d003404105e3/215/60/False/beneath-him-3.jpg"
+	notype    = "00000b30-bbc6-4315-9b0f-d003404105e3/215/60/False/beneath-him-3"
+	noname    = "00000b30-bbc6-4315-9b0f-d003404105e3/215/60/False/.jpg"
+	noname2   = "00000b30-bbc6-4315-9b0f-d003404105e3/215/60/False/jpg"
+	nocolor   = "00000b30-bbc6-4315-9b0f-d003404105e3/215/60/beneath-him-3.jpg"
+	noquality = "00000b30-bbc6-4315-9b0f-d003404105e3/215/False/beneath-him-3.jpg"
+	nowidth   = "00000b30-bbc6-4315-9b0f-d003404105e3/60/False/beneath-him-3.jpg"
+	nokey     = "00000b30-bbc6-4315-9b0f-d003404105e3"
+	nomaster  = "/no-such-file"
 )
 
 func TestGettingImages(t *testing.T) {
+	var verbose = false
+	if verbose {
+		tt = trace.New(os.Stderr, true)
+		logger = log.New(os.Stdout, "ImageServer", log.Lshortfile|log.LstdFlags)
+	} else {
+		tt = trace.New(ioutil.Discard, true) // os.Stderr, true) or (nil, false)
+		logger = log.New(ioutil.Discard, "ImageServer", log.Lshortfile|log.LstdFlags)
+	}
 	tt.Begin(t)()
 	imgServ = New(tt, logger)
-
-	//Convey("When all good\n", t, func() {
-	//	rGood, err := http.NewRequest("GET", goodpath, nil)
-	//	if err != nil {
-	//		t.Fatal(err)
-	//	}
-	//	Convey("gets a 200 OK\n", func() {
-	//		w := httptest.NewRecorder()
-	//		imgServ.GetSized(w, rGood,)
-	//		So(w.Result().StatusCode, ShouldEqual, 200)
-	//	})
-	//})
-
-	//Convey("When path bad\n", t, func() {
-	//	r, err := http.NewRequest("GET", badpath, nil)
-	//	if err != nil {
-	//		t.Fatal(err)
-	//	}
-	//	Convey("gets 200 and the dummy image\n", func() {
-	//		w := httptest.NewRecorder()
-	//		imgServ.GetSized(w, r)
-	//		So(w.Result().StatusCode, ShouldEqual, 200)
-	//		So(w.Body.String(), ShouldEqual, "dummy image")
-	//	})
-	//})
-	
 
 	Convey("good long image key", t, func() {
 		r, err := http.NewRequest("GET", goodkey, nil)
@@ -71,120 +53,107 @@ func TestGettingImages(t *testing.T) {
 			So(w.Result().StatusCode, ShouldEqual, 200)
 		})
 	})
-	//
-	//Convey("when no type", t, func() {
-	//	r, err := http.NewRequest("GET", notype, nil)
-	//	if err != nil {
-	//		t.Fatal(err)
-	//	}
-	//	Convey("gets 404, too\n", func() {
-	//		w := httptest.NewRecorder()
-	//		imgServ.GetSized(w, r)
-	//		So(w.Result().StatusCode, ShouldEqual, 404)
-	//	})
-	//
-	//})
-	//Convey("when no name", t, func() {
-	//	r, err := http.NewRequest("GET", noname, nil)
-	//	if err != nil {
-	//		t.Fatal(err)
-	//	}
-	//	Convey("gets 404, too\n", func() {
-	//		w := httptest.NewRecorder()
-	//		imgServ.GetSized(w, r)
-	//		So(w.Result().StatusCode, ShouldEqual, 404)
-	//	})
-	//
-	//})
-	//Convey("when no name, second variant", t, func() {
-	//	r, err := http.NewRequest("GET", noname2, nil)
-	//	if err != nil {
-	//		t.Fatal(err)
-	//	}
-	//	Convey("gets 404, too\n", func() {
-	//		w := httptest.NewRecorder()
-	//		imgServ.GetSized(w, r)
-	//		So(w.Result().StatusCode, ShouldEqual, 404)
-	//	})
-	//
-	//})
-	//Convey("when no color", t, func() {
-	//	r, err := http.NewRequest("GET", nocolor, nil)
-	//	if err != nil {
-	//		t.Fatal(err)
-	//	}
-	//	Convey("gets 404, too\n", func() {
-	//		w := httptest.NewRecorder()
-	//		imgServ.GetSized(w, r)
-	//		So(w.Result().StatusCode, ShouldEqual, 404)
-	//	})
-	//
-	//})
-	//Convey("when no quality", t, func() {
-	//	r, err := http.NewRequest("GET", noquality, nil)
-	//	if err != nil {
-	//		t.Fatal(err)
-	//	}
-	//	Convey("gets 404, too\n", func() {
-	//		w := httptest.NewRecorder()
-	//		imgServ.GetSized(w, r)
-	//		So(w.Result().StatusCode, ShouldEqual, 404)
-	//	})
-	//
-	//})
-	//Convey("when no width", t, func() {
-	//	r, err := http.NewRequest("GET", nowidth, nil)
-	//	if err != nil {
-	//		t.Fatal(err)
-	//	}
-	//	Convey("gets 404, too\n", func() {
-	//		w := httptest.NewRecorder()
-	//		imgServ.GetSized(w, r)
-	//		So(w.Result().StatusCode, ShouldEqual, 404)
-	//	})
-	//
-	//})
-	//Convey("when no height", t, func() {
-	//	r, err := http.NewRequest("GET", noheight, nil)
-	//	if err != nil {
-	//		t.Fatal(err)
-	//	}
-	//	Convey("gets 404, too\n", func() {
-	//		w := httptest.NewRecorder()
-	//		imgServ.GetSized(w, r)
-	//		So(w.Result().StatusCode, ShouldEqual, 404)
-	//	})
-	//
-	//})
-	//Convey("when no key", t, func() {
-	//	r, err := http.NewRequest("GET", nokey, nil)
-	//	if err != nil {
-	//		t.Fatal(err)
-	//	}
-	//	Convey("gets 404, too\n", func() {
-	//		w := httptest.NewRecorder()
-	//		imgServ.GetSized(w, r)
-	//		So(w.Result().StatusCode, ShouldEqual, 404)
-	//	})
-	//
-	//})
 
 
-	//Convey("when no precreated", t,func() {
-	//	// So(w.Result().StatusCode, ShouldEqual, 202)
-	//})
-	//
-	//Convey("when no master", t,func() {
-	//	// So(w.Result().StatusCode, ShouldEqual, 202)
-	//})
-	//
-	//Convey("when no mogile", t, func() {
-	//	// this may be unreachable/untestable...
-	//	// So(w.Result().StatusCode, ShouldEqual, 404)
-	//})
+	Convey("when no type", t, func() {
+		r, err := http.NewRequest("GET", notype, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		Convey("gets 200 if it can be created\n", func() {
+			w := httptest.NewRecorder()
+			imgServ.GetSized(w, r)
+			So(w.Result().StatusCode, ShouldEqual, 200)
+		})
+	})
+
+	Convey("when no name", t, func() {
+		r, err := http.NewRequest("GET", noname, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		Convey("gets 200 if it can be created\n", func() {
+			w := httptest.NewRecorder()
+			imgServ.GetSized(w, r)
+			So(w.Result().StatusCode, ShouldEqual, 200)
+		})
+	})
+	
+	Convey("when no name, second variant", t, func() {
+		r, err := http.NewRequest("GET", noname2, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		Convey("gets 200 if it can be created\n", func() {
+			w := httptest.NewRecorder()
+			imgServ.GetSized(w, r)
+			So(w.Result().StatusCode, ShouldEqual, 200)
+		})
+	})
+
+	Convey("when no color", t, func() {
+		r, err := http.NewRequest("GET", nocolor, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		Convey("gets 200 if it can be created\n", func() {
+			w := httptest.NewRecorder()
+			imgServ.GetSized(w, r)
+			So(w.Result().StatusCode, ShouldEqual, 200)
+		})
+	})
+
+	Convey("when no quality", t, func() {
+		r, err := http.NewRequest("GET", noquality, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		Convey("gets 200 if it can be created\n", func() {
+			w := httptest.NewRecorder()
+			imgServ.GetSized(w, r)
+			So(w.Result().StatusCode, ShouldEqual, 200)
+		})
+	})
+
+	Convey("when no width", t, func() {
+		r, err := http.NewRequest("GET", nowidth, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		Convey("gets 200 if it can be created\n", func() {
+			w := httptest.NewRecorder()
+			imgServ.GetSized(w, r)
+			So(w.Result().StatusCode, ShouldEqual, 200)
+		})
+	})
+
+	Convey("when no key", t, func() {
+		r, err := http.NewRequest("GET", nokey, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		Convey("gets 400, as it can't be created\n", func() {
+			w := httptest.NewRecorder()
+			imgServ.GetSized(w, r)
+			So(w.Result().StatusCode, ShouldEqual, 400)
+		})
+	})
 
 
+	Convey("when no master", t,func() {
+		r, err := http.NewRequest("GET", nomaster, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		Convey("gets 404\n", func() {
+			w := httptest.NewRecorder()
+			imgServ.GetSized(w, r)
+			So(w.Result().StatusCode, ShouldEqual, 404)
+		})
+	})
+	
 
+	// Not testable in the same run as the above tests.
 	//Convey("When server down\n", t, func() {
 	//	rGood, err := http.NewRequest("GET", goodpath, nil)
 	//	if err != nil {

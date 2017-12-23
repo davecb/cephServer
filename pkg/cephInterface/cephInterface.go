@@ -6,7 +6,7 @@ package cephInterface
 // ceph team debugged it for me.
 //
 // I expect most people will use the Amazon library, even though there
-// is a native RADOS one for Go, which looks better...
+// is a native RADOS one for Go, which looks significantly better...
 
 import (
 	"fmt"
