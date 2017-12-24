@@ -17,8 +17,7 @@ var logger *log.Logger   // FIXME this poses a problem
 var imgServ *imager
 
 const (
-
-
+	nokey	  = ""
 	goodkey   = "00000b30-bbc6-4315-9b0f-d003404105e3/215/60/False/beneath-him-3.jpg"
 	notype    = "00000b30-bbc6-4315-9b0f-d003404105e3/215/60/False/beneath-him-3"
 	noname    = "00000b30-bbc6-4315-9b0f-d003404105e3/215/60/False/.jpg"
@@ -26,7 +25,7 @@ const (
 	nocolor   = "00000b30-bbc6-4315-9b0f-d003404105e3/215/60/beneath-him-3.jpg"
 	noquality = "00000b30-bbc6-4315-9b0f-d003404105e3/215/False/beneath-him-3.jpg"
 	nowidth   = "00000b30-bbc6-4315-9b0f-d003404105e3/60/False/beneath-him-3.jpg"
-	nokey     = "00000b30-bbc6-4315-9b0f-d003404105e3"
+	keyonly   = "00000b30-bbc6-4315-9b0f-d003404105e3"
 	nomaster  = "/no-such-file"
 )
 
@@ -54,6 +53,17 @@ func TestGettingImages(t *testing.T) {
 		})
 	})
 
+	Convey("no key", t, func() {
+		r, err := http.NewRequest("GET", "", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		Convey("gets 404 no such object\n", func() {
+			w := httptest.NewRecorder()
+			imgServ.GetSized(w, r)
+			So(w.Result().StatusCode, ShouldEqual, 404)
+		})
+	})
 
 	Convey("when no type", t, func() {
 		r, err := http.NewRequest("GET", notype, nil)
@@ -127,18 +137,17 @@ func TestGettingImages(t *testing.T) {
 		})
 	})
 
-	Convey("when no key", t, func() {
-		r, err := http.NewRequest("GET", nokey, nil)
+	Convey("when just the key", t, func() {
+		r, err := http.NewRequest("GET", keyonly, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		Convey("gets 400, as it can't be created\n", func() {
+		Convey("gets 200 OK\n", func() {
 			w := httptest.NewRecorder()
 			imgServ.GetSized(w, r)
-			So(w.Result().StatusCode, ShouldEqual, 400)
+			So(w.Result().StatusCode, ShouldEqual, 200)
 		})
 	})
-
 
 	Convey("when no master", t,func() {
 		r, err := http.NewRequest("GET", nomaster, nil)

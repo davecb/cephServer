@@ -3,8 +3,7 @@ package imageServer
 import (
 	"github.com/davecb/cephServer/pkg/cephInterface"
 	"github.com/davecb/cephServer/pkg/trace"
-
-	"fmt"
+	
 	"strconv"
 	"net/http"
 	"strings"
@@ -113,12 +112,11 @@ func parseImageURL(s string) (key string, width, height, quality uint,
 	at := len(tokens) - 1
 	t.Printf("tokens = %v\n", tokens)
 	if at <= 0 {
-		// FIXME this may be acceptable at a later time
-		// FIXME explain the error in the log
-		return "", 0, 0, 0, false, "", "",
-			fmt.Errorf("could not find any / characters in %q, rejected", s)
+		t.Printf("returning bare key, %v\n", tokens)
+		return tokens[0], 0, 0, 0, false,
+			"", "", nil
 	}
-	// FIXME accept "images/<key>", too
+	// FIXME accept "<key>", too : it fails by assigning
 
 	// Proceed from right to left, although this is LL(1)
 	t.Printf("name.type token[%d] = %q\n", at, tokens[at])
@@ -176,6 +174,8 @@ func parseImageURL(s string) (key string, width, height, quality uint,
 		}
 	}
 	t.Printf("key = %q\n", key)
+	t.Printf("returning key=%q, width=%q, height=%q, quality=%q, grayScale=%q, name=%q, imgType=%q, err=%q\n",
+		key, width, height, quality, grayScale, name, imgType, nil)
 	return key, width, height, quality, grayScale, name, imgType, nil
 }
 

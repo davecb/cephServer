@@ -68,7 +68,6 @@ func startWebserver() {
 	})
 	http.HandleFunc("/", unsupportedHandler)
 
-	// FIXME ip addr seems to disagree with localhost, and vice versa
 	err := http.ListenAndServe(host, nil) // nolint
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
@@ -105,8 +104,7 @@ func bucketedObjectHandler(r *http.Request, w http.ResponseWriter, bucketName st
 func imageHandler(w http.ResponseWriter, r *http.Request) {
 	defer t.Begin(r)()
 
-	r.URL.Path = strings.TrimPrefix(r.URL.Path,
-		"/content/v1/images.s3.kobo.com/")
+	r.URL.Path = strings.TrimPrefix(r.URL.Path,	images)
 	switch r.Method {
 	case "GET":
 		img.GetSized(w, r)
@@ -127,11 +125,12 @@ func reportUnimplemented(w http.ResponseWriter, p, q string) {
 // runSmokeTest checks that the server is up, panics if not
 func runSmokeTest() {
 	time.Sleep(time.Second * 2)
-	key := "download.s3.kobo.com/3HK/index.html"  // valid
+	//key := "download.s3.kobo.com/3HK/index.html"  // valid
 	//key := "download.s3.kobo.com/image/albert/100/200/85/False/albert.jpg"  // TBA
 	//key := "albert.jpg" // no bucket, fail 404
 	//key := "download.s3.kobo.com/absent-file.jpg"  // Invalid, 404
 	//key := "images.s3.kobo.com/image/albert/100/200/85/False/albert"
+	key := "images.s3.kobo.com/00000b30-bbc6-4315-9b0f-d003404105e3"
 
 	resp, err := http.Get("http://" + host + "/" + key)
 	if err != nil {
