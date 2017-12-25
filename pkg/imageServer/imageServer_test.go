@@ -1,7 +1,7 @@
 package imageServer
 
 import (
-	"github.com/davecb/cephServer/pkg/trace"
+	"github.com/davecb/trace"
 	"log"  
 
 	"testing"
@@ -13,7 +13,7 @@ import (
 )
 
 var tt trace.Trace
-var logger *log.Logger   // FIXME this poses a problem
+var logger *log.Logger
 var imgServ *imager
 
 const (
@@ -26,7 +26,7 @@ const (
 	noquality = "00000b30-bbc6-4315-9b0f-d003404105e3/215/False/beneath-him-3.jpg"
 	nowidth   = "00000b30-bbc6-4315-9b0f-d003404105e3/60/False/beneath-him-3.jpg"
 	keyonly   = "00000b30-bbc6-4315-9b0f-d003404105e3"
-	nomaster  = "/no-such-file"
+	nomaster  = "no-such-file"
 )
 
 func TestGettingImages(t *testing.T) {

@@ -1,7 +1,7 @@
 package objectServer
 
 import (
-	"github.com/davecb/cephServer/pkg/trace"
+	"github.com/davecb/trace"
 	"log"  
 
 	"testing"

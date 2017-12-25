@@ -2,7 +2,7 @@ package imageServer
 
 import (
 	"github.com/davecb/cephServer/pkg/cephInterface"
-	"github.com/davecb/cephServer/pkg/trace"
+	"github.com/davecb/trace"
 	
 	"strconv"
 	"net/http"

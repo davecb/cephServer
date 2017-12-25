@@ -3,7 +3,7 @@ package objectServer
 
 import (
 	"net/http"
-	"github.com/davecb/cephServer/pkg/trace"
+	"github.com/davecb/trace"
 	"github.com/davecb/cephServer/pkg/cephInterface"
 	"log"
 )

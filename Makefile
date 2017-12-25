@@ -1,8 +1,8 @@
 install: prereqs
 	go install github.com/davecb/cephServer/pkg/cephInterface
 	go install github.com/davecb/cephServer/pkg/imageServer
-	go install github.com/davecb/cephServer/pkg/trace
-	go install github.com/davecb/cephServer/pkg/bucketServer
+	go install github.com/davecb/trace
+	go install github.com/davecb/cephServer/pkg/objectServer
 	go install github.com/davecb/cephServer/cmd/imager
 
 

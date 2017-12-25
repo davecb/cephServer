@@ -4,7 +4,7 @@ import (
 
 	"github.com/davecb/cephServer/pkg/imageServer"
 	"github.com/davecb/cephServer/pkg/objectServer"
-	"github.com/davecb/cephServer/pkg/trace"
+	"github.com/davecb/trace"
 	
 	"net/http/httputil"
 	"fmt"
@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	//"os"
 	"time"
 	"strings"
 	"os"
