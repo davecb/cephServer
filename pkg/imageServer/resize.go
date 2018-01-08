@@ -1,9 +1,5 @@
 package imageServer
 
-import (
-	//"github.com/nfnt/resize"
-)
-
 
 // Image strictly resizes an image. Must return something valid
 func (i imager) resize(contents []byte, key string, width, height, quality uint, grayScale bool, name, imgType string) []byte {
